@@ -301,10 +301,10 @@
                 bgType: "image",
                 title: createTextObj("Judgement Criteria", { fontFamily: 'Cinzel', fontSize: '2rem', textDecoration: 'underline', fontWeight: 'bold' }),
                 criteria: [
-                    createTextObj("1. Creativity (Use of theme in the art work)"),
+                    createTextObj("1. Creativity ( Use of theme in the art work )"),
                     createTextObj("2. Colour Scheme"),
-                    createTextObj("3. Presentation (Neatness and Sharpness)"),
-                    createTextObj("4. Composition (Use of space in the sheet)")
+                    createTextObj("3. Presentation ( Neatness and Sharpness )"),
+                    createTextObj("4. Composition ( Use of space in the sheet )")
                 ],
                 quote: createTextObj("“Unleash Your Creativity, For Art Knows No Boundaries”", { fontFamily: 'Great Vibes', fontSize: '2rem', color: '#713f12', borderTop: '2px solid #eab308', paddingTop: '1rem', marginTop: '2rem' })
             },
@@ -335,28 +335,69 @@
         const glassClass = "bg-white/40 backdrop-blur-md border border-white/40 shadow-2xl rounded-xl text-gray-900";
 
         const TextToolbar = ({ style, onStyleChange }) => {
-            // ... (Same toolbar code)
+            const fonts = [
+                { name: 'Cinzel', val: 'Cinzel' },
+                { name: 'Playfair', val: 'Playfair Display' },
+                { name: 'Cursive', val: 'Great Vibes' },
+                { name: 'Dance', val: 'Dancing Script' },
+                { name: 'Modern', val: 'Montserrat' },
+                { name: 'Serif', val: 'serif' },
+                { name: 'Sans', val: 'sans-serif' }
+            ];
+
+            const sizes = ['0.8rem', '1rem', '1.25rem', '1.5rem', '2rem', '3rem', '4rem', '5rem', '6rem', '8rem'];
+
             return (
-                <div className="format-toolbar" onMouseDown={e => e.preventDefault()}>
-                    <select value={style.fontFamily || 'inherit'} onChange={(e) => onStyleChange({ ...style, fontFamily: e.target.value })} className="bg-gray-700 text-white text-xs rounded p-1 w-20">
+                <div className="format-toolbar">
+                    {/* Font Family */}
+                    <select 
+                        value={style.fontFamily || 'inherit'} 
+                        onChange={(e) => onStyleChange({ ...style, fontFamily: e.target.value })}
+                        className="bg-gray-700 text-white text-xs rounded border border-gray-600 p-1 outline-none w-20"
+                    >
                         <option value="inherit">Font</option>
-                        <option value="Cinzel">Cinzel</option>
-                        <option value="Playfair Display">Playfair</option>
-                        <option value="Great Vibes">Cursive</option>
-                        <option value="Dancing Script">Dance</option>
-                        <option value="Montserrat">Modern</option>
+                        {fonts.map(f => <option key={f.val} value={f.val}>{f.name}</option>)}
                     </select>
-                    <select value={style.fontSize || 'inherit'} onChange={(e) => onStyleChange({ ...style, fontSize: e.target.value })} className="bg-gray-700 text-white text-xs rounded p-1 w-16">
+
+                    {/* Font Size */}
+                    <select 
+                        value={style.fontSize || 'inherit'} 
+                        onChange={(e) => onStyleChange({ ...style, fontSize: e.target.value })}
+                        className="bg-gray-700 text-white text-xs rounded border border-gray-600 p-1 outline-none w-16"
+                    >
                         <option value="inherit">Size</option>
-                        <option value="1rem">1rem</option>
-                        <option value="1.5rem">1.5rem</option>
-                        <option value="2rem">2rem</option>
-                        <option value="3rem">3rem</option>
-                        <option value="5rem">5rem</option>
+                        {sizes.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
-                    <button onClick={() => onStyleChange({ ...style, fontWeight: style.fontWeight === 'bold' ? 'normal' : 'bold' })} className="p-1 rounded text-white hover:bg-gray-600"><Icon name="Bold" className="w-3 h-3" /></button>
-                    <button onClick={() => onStyleChange({ ...style, fontStyle: style.fontStyle === 'italic' ? 'normal' : 'italic' })} className="p-1 rounded text-white hover:bg-gray-600"><Icon name="Italic" className="w-3 h-3" /></button>
-                    <input type="color" value={style.color || '#000000'} onChange={(e) => onStyleChange({ ...style, color: e.target.value })} className="w-6 h-6 rounded cursor-pointer"/>
+
+                    {/* Bold */}
+                    <button 
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => onStyleChange({ ...style, fontWeight: style.fontWeight === 'bold' ? 'normal' : 'bold' })}
+                        className={`p-1 rounded ${style.fontWeight === 'bold' ? 'bg-purple-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+                        title="Bold"
+                    >
+                        <Icon name="Bold" className="w-3 h-3" />
+                    </button>
+
+                     {/* Italic */}
+                     <button 
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => onStyleChange({ ...style, fontStyle: style.fontStyle === 'italic' ? 'normal' : 'italic' })}
+                        className={`p-1 rounded ${style.fontStyle === 'italic' ? 'bg-purple-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+                        title="Italic"
+                    >
+                        <Icon name="Italic" className="w-3 h-3" />
+                    </button>
+
+                    {/* Color Picker */}
+                    <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-500 cursor-pointer hover:scale-110 transition-transform">
+                         <input 
+                            type="color" 
+                            value={style.color || '#000000'} 
+                            onChange={(e) => onStyleChange({ ...style, color: e.target.value })}
+                            className="absolute -top-2 -left-2 w-10 h-10 p-0 m-0 cursor-pointer"
+                        />
+                    </div>
                 </div>
             );
         };
