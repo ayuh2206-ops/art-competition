@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Stroke - Art Competition</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Lucide Icons (Script version) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Great+Vibes&family=Dancing+Script:wght@400;700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        .animate-fadeIn { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .editable-wrapper {
+            position: relative;
+            display: inline-block;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .editable-input {
+            background: transparent;
+            border: 1px dashed transparent;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .editable-wrapper:hover .editable-input.admin-active {
+            border-color: #a855f7; /* Purple border on hover in admin */
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .editable-wrapper:focus-within .editable-input.admin-active {
+            outline: none;
+            border-color: #a855f7;
+            background-color: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
+        }
+
+        /* Toolbar Styles */
+        .format-toolbar {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1f2937; /* Gray-900 */
+            border: 1px solid #374151;
+            padding: 6px;
+            border-radius: 8px;
+            display: flex;
+            gap: 4px;
+            z-index: 100;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            margin-bottom: 5px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .editable-wrapper:hover .format-toolbar,
+        .editable-wrapper:focus-within .format-toolbar {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Triangle pointer for toolbar */
+        .format-toolbar::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1f2937 transparent transparent transparent;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        .font-artistic { font-family: 'Great Vibes', cursive; }
+        .font-body { font-family: 'Playfair Display', serif; }
+        .font-title { font-family: 'Cinzel', serif; }
+        .font-modern { font-family: 'Montserrat', sans-serif; }
+        .font-dance { font-family: 'Dancing Script', cursive; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans text-gray-800">
+
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+
+        // --- FIREBASE CONFIG ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyACH3hBDHmAGD6ubmloy3Xcdq2zbBEu5hY",
+            authDomain: "art-competition-c8782.firebaseapp.com",
+            projectId: "art-competition-c8782",
+            storageBucket: "art-competition-c8782.firebasestorage.app",
+            messagingSenderId: "877780594142",
+            appId: "1:877780594142:web:96ddf84ea1c6d406b4414f",
+            measurementId: "G-57FCM19J06"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        // App ID for Firestore path (using environment var or fallback)
+        const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'master-stroke-default';
+        const COLLECTION_NAME = 'masterStrokeData';
+        const DOC_ID = 'siteContent';
+
+        const { useState, useEffect, useRef } = React;
+
+        // --- ICONS COMPONENT ---
+        const Icon = ({ name, className }) => {
+            const icons = {
+                Palette: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>,
+                Calendar: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>,
+                Clock: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+                ClipboardList: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>,
+                UserPlus: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>,
+                Phone: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>,
+                Menu: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>,
+                X: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>,
+                ArrowUp: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m18 15-6-6-6 6"/></svg>,
+                ArrowDown: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m6 9 6 6 6-6"/></svg>,
+                Trash: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>,
+                Plus: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="M12 5v14"/></svg>,
+                Lock: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
+                Unlock: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>,
+                Type: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg>,
+                Bold: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14 12a4 4 0 0 0 0-8H6v8"/><path d="M15 20a4 4 0 0 0 0-8H6v8Z"/></svg>,
+                Italic: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="19" x2="10" y1="4" y2="4"/><line x1="14" x2="5" y1="20" y2="20"/><line x1="15" x2="9" y1="4" y2="20"/></svg>,
+                Loader: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${className} animate-spin`}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            };
+            return icons[name] || null;
+        };
+
+        // --- UTILS ---
+        const createTextObj = (text, style = {}) => ({ text, style });
+
+        // --- DATA STRUCTURE (Updated for Rich Text) ---
+        const INITIAL_DATA = {
+            header: {
+                schoolName: createTextObj("Podar International School", { color: '#fde047', fontFamily: 'Cinzel', fontSize: '1.5rem', fontWeight: 'bold' }),
+                title: createTextObj("MASTER STROKE", { color: '#ffffff', fontFamily: 'Cinzel', fontSize: '5rem', fontWeight: '900', textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }),
+                subtitle: createTextObj("Unleashing Creativity, One Stroke at a Time", { color: '#f3f4f6', fontFamily: 'Great Vibes', fontSize: '2rem' }),
+                bgUrl: "https://cdn.pixabay.com/video/2016/09/21/5302-183786270_large.mp4",
+                bgType: "video"
+            },
+            home: {
+                bgUrl: "https://images.unsplash.com/photo-1513364776144-60967b0f800f?q=80&w=2071&auto=format&fit=crop",
+                bgType: "image",
+                intro: createTextObj("Greetings of the day!!", { fontFamily: 'Cinzel', fontSize: '1.5rem', borderBottom: '2px solid #9ca3af', paddingBottom: '0.5rem' }),
+                quote: createTextObj("“A Painter has the UNIVERSE in his mind and hands” - Da Vinci", { fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: '1.25rem', fontWeight: 'bold' }),
+                text1: createTextObj("Expressiveness is valuable because it helps us to understand emotions in general while contributing to the formation of an aesthetically satisfying whole.", { fontFamily: 'Playfair Display', fontSize: '1.1rem' }),
+                text2: createTextObj("We, the Management, Principal, Staff and Students of", { fontFamily: 'Playfair Display', fontSize: '1.1rem', fontWeight: 'bold' }),
+                school: createTextObj("Podar International School, AMBEGAON", { fontFamily: 'Cinzel', fontSize: '1.5rem', color: '#581c87' }),
+                invite: createTextObj("Invite our young artists to reveal their true self and connect with others, explore the exquisite pieces and leap into the world of artistic expression through the", { fontFamily: 'Playfair Display', fontSize: '1.1rem' }),
+                competitionName: createTextObj("PODAR PUNE HUB 1 ART COMPETITION", { fontFamily: 'Cinzel', fontSize: '1.8rem', color: '#312e81', fontWeight: 'bold' }),
+                year: createTextObj("2025-26", { fontFamily: 'Cinzel', fontSize: '1.5rem', fontWeight: 'bold' }),
+                slogan: createTextObj("‘MASTERS STROKES’", { fontFamily: 'Great Vibes', fontSize: '3rem', color: '#6b21a8' })
+            },
+            details: {
+                bgUrl: "", 
+                bgType: "image",
+                title: createTextObj("Event Details", { fontFamily: 'Cinzel', fontSize: '2rem', textDecoration: 'underline', fontWeight: 'bold' }),
+                dateLabel: createTextObj("Date :", { fontWeight: 'bold' }), date: createTextObj("22nd December, 2025", {}),
+                dayLabel: createTextObj("Day :", { fontWeight: 'bold' }), day: createTextObj("Monday", {}),
+                timeLabel: createTextObj("Time :", { fontWeight: 'bold' }), time: createTextObj("9:00 am to 4:00 pm", {}),
+                venueLabel: createTextObj("Venue :", { fontWeight: 'bold' }), venue: createTextObj("PIS, AMBEGAON", {}),
+                scheduleTitle: createTextObj("Schedule of the day", { fontFamily: 'Cinzel', fontSize: '1.5rem', textDecoration: 'underline', marginTop: '2rem' }),
+                schedule: [
+                    createTextObj("9:00 am – 9:30 am – Breakfast"),
+                    createTextObj("9:30 am – 10:00 am – Inauguration"),
+                    createTextObj("10:00 am – 1:00 pm – Competition"),
+                    createTextObj("1:00 pm – 2:00 pm – Lunch"),
+                    createTextObj("2:00 pm – 3:30 pm – Prize Distribution")
+                ]
+            },
+            rules: {
+                bgUrl: "", 
+                bgType: "image",
+                title: createTextObj("Rules and Regulations", { fontFamily: 'Cinzel', fontSize: '2rem', textDecoration: 'underline', fontWeight: 'bold' }),
+                items: [
+                    createTextObj("1. The 3 best Artworks will be selected from each Grade."),
+                    createTextObj("2. The following winners will be announced per Grade: 1st Prize, 2nd Prize, 3rd Prize"),
+                    createTextObj("3. The painting must be relevant to the given theme."),
+                    createTextObj("4. A3 size paper will be provided by the host school. Paper Plates will be provided for Warli Painting."),
+                    createTextObj("5. Use of reference images and tracing of pictures is not allowed for the participants.")
+                ]
+            },
+            general: {
+                bgUrl: "",
+                bgType: "image",
+                title: createTextObj("General Instructions", { fontFamily: 'Cinzel', fontSize: '2rem', textDecoration: 'underline', fontWeight: 'bold' }),
+                sections: [
+                    {
+                        title: createTextObj("Registration:", { color: '#14532d', textDecoration: 'underline', fontWeight: 'bold', fontSize: '1.25rem' }),
+                        content: [
+                            createTextObj("Registration will be done through the Google form link shared on Website."),
+                            createTextObj("Registration to be completed by 22nd December, 2025.")
+                        ]
+                    },
+                    {
+                        title: createTextObj("Adherence:", { color: '#14532d', textDecoration: 'underline', fontWeight: 'bold', fontSize: '1.25rem' }),
+                        content: [
+                            createTextObj("Follow deadlines, instructions and reporting time."),
+                            createTextObj("Every school should send Art teachers with the students (10:1)"),
+                            createTextObj("Kindly inform the names of participants prior. Only one student PER GRADE PER SCHOOL will be allowed to participate.")
+                        ]
+                    },
+                    {
+                        title: createTextObj("Dress Code:", { color: '#14532d', textDecoration: 'underline', fontWeight: 'bold', fontSize: '1.25rem' }),
+                        content: [
+                            createTextObj("Students should wear school uniform."),
+                            createTextObj("It is mandatory for students and Art Teachers to carry their ID Cards.")
+                        ]
+                    },
+                    {
+                        title: createTextObj("Discipline:", { color: '#14532d', textDecoration: 'underline', fontWeight: 'bold', fontSize: '1.25rem' }),
+                        content: [
+                            createTextObj("All participants must maintain discipline and decorum throughout the school campus.")
+                        ]
+                    },
+                    {
+                        title: createTextObj("Refreshment:", { color: '#14532d', textDecoration: 'underline', fontWeight: 'bold', fontSize: '1.25rem' }),
+                        content: [
+                            createTextObj("Breakfast, lunch and evening snacks will be arranged by the host school.")
+                        ]
+                    },
+                    {
+                        title: createTextObj("Judges Decision:", { color: '#14532d', textDecoration: 'underline', fontWeight: 'bold', fontSize: '1.25rem' }),
+                        content: [
+                            createTextObj("The decision of the judges will be final and binding.")
+                        ]
+                    }
+                ]
+            },
+            judgement: {
+                bgUrl: "",
+                bgType: "image",
+                title: createTextObj("Judgement Criteria", { fontFamily: 'Cinzel', fontSize: '2rem', textDecoration: 'underline', fontWeight: 'bold' }),
+                criteria: [
+                    createTextObj("1. Creativity (Use of theme in the artwork)"),
+                    createTextObj("2. Colour Scheme"),
+                    createTextObj("3. Presentation (Neatness and Sharpness)"),
+                    createTextObj("4. Composition (Use of space on the sheet)")
+                ],
+                quote: createTextObj("“Unleash Your Creativity, For Art Knows No Boundaries”", { fontFamily: 'Great Vibes', fontSize: '2rem', color: '#713f12', borderTop: '2px solid #eab308', paddingTop: '1rem', marginTop: '2rem' })
+            },
+            registration: {
+                bgUrl: "", bgType: "image", 
+                deadline: createTextObj("26th August 2024", { color: '#b91c1c', fontWeight: 'bold' }), 
+                regLink: "https://docs.google.com/forms", 
+                disclaimer: createTextObj("*This is a sample link. Replace with your actual Google Form or Excel link.", { fontSize: '0.8rem', fontStyle: 'italic' })
+            },
+            contact: {
+                bgUrl: "", bgType: "image",
+                contacts: [
+                    { 
+                        name: createTextObj("Mr. Anil Patil", { fontWeight: 'bold', fontSize: '1.1rem' }), 
+                        role: createTextObj("PIS, Ambegaon", { color: '#991b1b' }), 
+                        phone: createTextObj("8421388999", { fontWeight: 'bold', textDecoration: 'underline' }) 
+                    }, 
+                    { 
+                        name: createTextObj("Mr. Ganesh Patil", { fontWeight: 'bold', fontSize: '1.1rem' }), 
+                        role: createTextObj("PIS, Ambegaon", { color: '#991b1b' }), 
+                        phone: createTextObj("9881739014", { fontWeight: 'bold', textDecoration: 'underline' }) 
+                    }
+                ]
+            }
+        };
+
+        // --- COMPONENTS ---
+
+        const glassClass = "bg-white/40 backdrop-blur-md border border-white/40 shadow-2xl rounded-xl text-gray-900";
+
+        const TextToolbar = ({ style, onStyleChange }) => {
+            const fonts = [
+                { name: 'Cinzel', val: 'Cinzel' },
+                { name: 'Playfair', val: 'Playfair Display' },
+                { name: 'Cursive', val: 'Great Vibes' },
+                { name: 'Dance', val: 'Dancing Script' },
+                { name: 'Modern', val: 'Montserrat' },
+                { name: 'Serif', val: 'serif' },
+                { name: 'Sans', val: 'sans-serif' }
+            ];
+
+            const sizes = ['0.8rem', '1rem', '1.25rem', '1.5rem', '2rem', '3rem', '4rem', '5rem', '6rem', '8rem'];
+
+            return (
+                <div className="format-toolbar" onMouseDown={e => e.preventDefault()}>
+                    {/* Font Family */}
+                    <select 
+                        value={style.fontFamily || 'inherit'} 
+                        onChange={(e) => onStyleChange({ ...style, fontFamily: e.target.value })}
+                        className="bg-gray-700 text-white text-xs rounded border border-gray-600 p-1 outline-none w-20"
+                    >
+                        <option value="inherit">Font</option>
+                        {fonts.map(f => <option key={f.val} value={f.val}>{f.name}</option>)}
+                    </select>
+
+                    {/* Font Size */}
+                    <select 
+                        value={style.fontSize || 'inherit'} 
+                        onChange={(e) => onStyleChange({ ...style, fontSize: e.target.value })}
+                        className="bg-gray-700 text-white text-xs rounded border border-gray-600 p-1 outline-none w-16"
+                    >
+                        <option value="inherit">Size</option>
+                        {sizes.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+
+                    {/* Bold */}
+                    <button 
+                        onClick={() => onStyleChange({ ...style, fontWeight: style.fontWeight === 'bold' ? 'normal' : 'bold' })}
+                        className={`p-1 rounded ${style.fontWeight === 'bold' ? 'bg-purple-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+                        title="Bold"
+                    >
+                        <Icon name="Bold" className="w-3 h-3" />
+                    </button>
+
+                     {/* Italic */}
+                     <button 
+                        onClick={() => onStyleChange({ ...style, fontStyle: style.fontStyle === 'italic' ? 'normal' : 'italic' })}
+                        className={`p-1 rounded ${style.fontStyle === 'italic' ? 'bg-purple-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+                        title="Italic"
+                    >
+                        <Icon name="Italic" className="w-3 h-3" />
+                    </button>
+
+                    {/* Color Picker */}
+                    <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-500 cursor-pointer hover:scale-110 transition-transform">
+                         <input 
+                            type="color" 
+                            value={style.color || '#000000'} 
+                            onChange={(e) => onStyleChange({ ...style, color: e.target.value })}
+                            className="absolute -top-2 -left-2 w-10 h-10 p-0 m-0 cursor-pointer"
+                        />
+                    </div>
+                </div>
+            );
+        };
+
+        const EditableText = ({ data, onChange, className, multiline = false, admin }) => {
+            // Handle case where data might be a simple string (legacy) or undefined
+            const text = typeof data === 'object' ? data.text : (data || "");
+            const style = typeof data === 'object' ? (data.style || {}) : {};
+
+            if (!admin) {
+                return <span className={className} style={style} dangerouslySetInnerHTML={{__html: text.replace(/\n/g, '<br/>')}}></span>;
+            }
+
+            const handleTextChange = (newText) => {
+                onChange({ text: newText, style });
+            };
+
+            const handleStyleChange = (newStyle) => {
+                onChange({ text, style: newStyle });
+            };
+
+            return (
+                <div className={`editable-wrapper group ${className}`}>
+                    <TextToolbar style={style} onStyleChange={handleStyleChange} />
+                    {multiline ? (
+                        <textarea 
+                            value={text} 
+                            onChange={(e) => handleTextChange(e.target.value)}
+                            className="editable-input admin-active p-1 rounded"
+                            style={style}
+                            rows={3}
+                        />
+                    ) : (
+                        <input 
+                            type="text" 
+                            value={text} 
+                            onChange={(e) => handleTextChange(e.target.value)}
+                            className="editable-input admin-active p-1 rounded"
+                            style={style}
+                        />
+                    )}
+                </div>
+            );
+        };
+
+        const BackgroundControl = ({ data, onUpdate, label, onError }) => {
+            const [isUploading, setIsUploading] = useState(false);
+
+            const handleFileUpload = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const isVideo = file.type.startsWith('video/');
+                const isImage = file.type.startsWith('image/');
+
+                if (!isVideo && !isImage) {
+                    onError('Please upload an image or video file.');
+                    return;
+                }
+
+                setIsUploading(true);
+                try {
+                    // Create a unique filename for Storage
+                    const filename = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
+                    const storageRef = ref(storage, `artifacts/${APP_ID}/public/media/${filename}`);
+                    
+                    const snapshot = await uploadBytes(storageRef, file);
+                    const downloadURL = await getDownloadURL(snapshot.ref);
+
+                    onUpdate({
+                        ...data,
+                        bgUrl: downloadURL,
+                        bgType: isVideo ? 'video' : 'image'
+                    });
+                } catch (err) {
+                    console.error("Upload failed", err);
+                    onError("Upload failed. Check console or try again.");
+                } finally {
+                    setIsUploading(false);
+                }
+            };
+
+            return (
+                <div className="absolute top-4 right-4 z-50 bg-black/80 p-4 rounded text-white text-sm w-64 shadow-xl border border-purple-500">
+                    <h4 className="font-bold mb-2 text-purple-300">{label} Background</h4>
+                    <div className="mb-4 border-b border-gray-600 pb-4">
+                        <label className="block text-xs mb-1 font-bold text-green-400">Option 1: Upload File (Cloud)</label>
+                        {isUploading ? (
+                            <div className="text-center p-2 text-green-400 flex items-center justify-center gap-2">
+                                <Icon name="Loader" className="w-4 h-4"/> Uploading...
+                            </div>
+                        ) : (
+                            <input 
+                                type="file" 
+                                accept="image/*,video/*"
+                                onChange={handleFileUpload}
+                                className="w-full text-xs text-gray-300 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700"
+                            />
+                        )}
+                        <p className="text-[9px] text-gray-400 mt-1">
+                            * Files are saved to Firebase Cloud Storage.
+                        </p>
+                    </div>
+                    <div>
+                         <label className="block text-xs mb-1 font-bold text-blue-400">Option 2: Use URL</label>
+                        <div className="mb-2">
+                            <label className="block text-[10px] mb-1 text-gray-400">Type:</label>
+                            <select 
+                                value={data.bgType} 
+                                onChange={(e) => onUpdate({...data, bgType: e.target.value})}
+                                className="w-full text-black p-1 rounded text-xs"
+                            >
+                                <option value="image">Image</option>
+                                <option value="video">Video</option>
+                            </select>
+                        </div>
+                        <div>
+                            <input 
+                                type="text" 
+                                value={data.bgUrl && data.bgUrl.length < 100 ? data.bgUrl : ''} 
+                                onChange={(e) => onUpdate({...data, bgUrl: e.target.value})}
+                                placeholder={data.bgUrl && data.bgUrl.startsWith('http') ? "https://..." : "Upload or paste URL"}
+                                className="w-full text-black p-1 rounded"
+                            />
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const BackgroundLayer = ({ url, type }) => {
+            if (!url) return null;
+            return (
+                <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+                    {type === 'video' ? (
+                        <video autoPlay muted loop playsInline className="w-full h-full object-cover" src={url}>
+                            Your browser does not support the video tag.
+                        </video>
+                    ) : (
+                        <div 
+                            className="w-full h-full bg-cover bg-center"
+                            style={{ backgroundImage: `url(${url})` }}
+                        ></div>
+                    )}
+                </div>
+            );
+        };
+
+        const LayoutWrapper = ({ children, className = "", bgUrl, bgType, adminControls }) => (
+            <div className={`relative min-h-[600px] w-full flex flex-col justify-center font-body ${className}`}>
+                <BackgroundLayer url={bgUrl} type={bgType} />
+                <div className="relative z-10 w-full max-w-6xl mx-auto px-4 py-12">
+                    {adminControls}
+                    {children}
+                </div>
+            </div>
+        );
+
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('home');
+            const [isMenuOpen, setIsMenuOpen] = useState(false);
+            const [isAdmin, setIsAdmin] = useState(false);
+            const [errorMsg, setErrorMsg] = useState(null);
+            
+            const [data, setData] = useState(INITIAL_DATA);
+            const [user, setUser] = useState(null);
+            const [isLoading, setIsLoading] = useState(true);
+
+            const [showSaveMsg, setShowSaveMsg] = useState(false);
+            const [isSaving, setIsSaving] = useState(false);
+
+            // --- AUTH & DATA SYNC ---
+            useEffect(() => {
+                const initAuth = async () => {
+                     try {
+                        // Anonymous login to allow reading/writing based on security rules
+                        // Note: For a real production app, you'd want robust security rules
+                        await signInAnonymously(auth);
+                     } catch (error) {
+                         console.error("Auth failed", error);
+                         setErrorMsg("Authentication failed. App may be read-only.");
+                     }
+                };
+                initAuth();
+
+                const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+                    setUser(currentUser);
+                    if (currentUser) {
+                        // Set up Firestore listener
+                        const docRef = doc(db, 'artifacts', APP_ID, 'public', 'data', COLLECTION_NAME, DOC_ID);
+                        
+                        const unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
+                            if (docSnap.exists()) {
+                                const cloudData = docSnap.data();
+                                // Merge with initial structure to ensure new fields exist if schema changes
+                                setData(prev => ({ ...prev, ...cloudData }));
+                            } else {
+                                // Doc doesn't exist yet, we can optionally create it here or wait for first save
+                                console.log("No data found, using defaults.");
+                            }
+                            setIsLoading(false);
+                        }, (error) => {
+                            console.error("Snapshot error:", error);
+                            setErrorMsg("Failed to load live data.");
+                            setIsLoading(false);
+                        });
+
+                        return () => unsubscribeSnapshot();
+                    } else {
+                         setIsLoading(false);
+                    }
+                });
+
+                return () => unsubscribeAuth();
+            }, []);
+
+
+            const updateSection = (section, updates) => {
+                const newData = { ...data, [section]: { ...data[section], ...updates } };
+                setData(newData);
+            };
+
+            const saveChanges = async () => {
+                if (!user) {
+                    setErrorMsg("You must be connected to save changes.");
+                    return;
+                }
+                setIsSaving(true);
+                try {
+                    const docRef = doc(db, 'artifacts', APP_ID, 'public', 'data', COLLECTION_NAME, DOC_ID);
+                    await setDoc(docRef, data);
+                    
+                    setShowSaveMsg(true);
+                    setTimeout(() => setShowSaveMsg(false), 2000);
+                } catch (e) {
+                    console.error("Save failed", e);
+                    setErrorMsg("Failed to save changes to the cloud.");
+                } finally {
+                    setIsSaving(false);
+                }
+            };
+
+            // VIBGYOR Colors mapping
+            const tabColors = {
+                home: 'violet',
+                details: 'indigo',
+                rules: 'blue',
+                general: 'green',
+                judgement: 'yellow',
+                registration: 'orange',
+                contact: 'red'
+            };
+
+            const navItems = [
+                { id: 'home', label: 'Home' },
+                { id: 'details', label: 'Event Details' },
+                { id: 'rules', label: 'Rules & Regs' },
+                { id: 'general', label: 'General Instructions' },
+                { id: 'judgement', label: 'Judgement Criteria' },
+                { id: 'registration', label: 'Registration' },
+                { id: 'contact', label: 'Contact Us' },
+            ];
+
+            const renderContent = () => {
+                const currentData = data[activeTab];
+                const adminControls = isAdmin && (
+                        <BackgroundControl 
+                            data={currentData} 
+                            onUpdate={(updates) => updateSection(activeTab, updates)}
+                            label={`"${navItems.find(n => n.id === activeTab).label}" Tab`}
+                            onError={setErrorMsg}
+                        />
+                );
+
+                const commonLayout = (content) => (
+                    <LayoutWrapper 
+                        className="animate-fadeIn" 
+                        bgUrl={currentData.bgUrl} 
+                        bgType={currentData.bgType}
+                        adminControls={adminControls}
+                    >
+                         {isAdmin && !currentData.bgUrl && (
+                            <div className="text-center bg-white/80 p-4 rounded max-w-md mx-auto mb-4">
+                                <p className="font-bold text-red-600">No Background Set</p>
+                                <p className="text-sm">Use Admin Controls (Top Right)</p>
+                            </div>
+                        )}
+                        <div className={`max-w-4xl mx-auto p-8 relative z-10 ${glassClass} text-center`}>
+                            {content}
+                        </div>
+                    </LayoutWrapper>
+                );
+
+                switch (activeTab) {
+                    case 'home':
+                        return commonLayout(
+                            <div className="space-y-6 text-lg">
+                                <div className="mb-4">
+                                    <EditableText admin={isAdmin} data={currentData.intro} onChange={v=>updateSection('home', {intro:v})} />
+                                </div>
+                                <div className="my-4">
+                                    <EditableText admin={isAdmin} data={currentData.quote} onChange={v=>updateSection('home', {quote:v})} />
+                                </div>
+                                <p>
+                                    <EditableText admin={isAdmin} data={currentData.text1} onChange={v=>updateSection('home', {text1:v})} multiline />
+                                </p>
+                                <div className="mt-8">
+                                    <p><EditableText admin={isAdmin} data={currentData.text2} onChange={v=>updateSection('home', {text2:v})} /></p>
+                                    <h4 className="my-2">
+                                        <EditableText admin={isAdmin} data={currentData.school} onChange={v=>updateSection('home', {school:v})} />
+                                    </h4>
+                                </div>
+                                <p className="my-6 px-8">
+                                    <EditableText admin={isAdmin} data={currentData.invite} onChange={v=>updateSection('home', {invite:v})} multiline />
+                                </p>
+                                <div className="mt-8 border-t border-gray-400 pt-6">
+                                    <h2>
+                                        <EditableText admin={isAdmin} data={currentData.competitionName} onChange={v=>updateSection('home', {competitionName:v})} />
+                                    </h2>
+                                    <h3 className="my-2">
+                                        <EditableText admin={isAdmin} data={currentData.year} onChange={v=>updateSection('home', {year:v})} />
+                                    </h3>
+                                    <h1 className="mt-4">
+                                        <EditableText admin={isAdmin} data={currentData.slogan} onChange={v=>updateSection('home', {slogan:v})} />
+                                    </h1>
+                                </div>
+                            </div>
+                        );
+
+                    case 'details':
+                        return commonLayout(
+                            <div className="space-y-6 text-lg">
+                                <div className="mb-8">
+                                    <EditableText admin={isAdmin} data={currentData.title} onChange={v=>updateSection('details', {title:v})} />
+                                </div>
+                                <div className="grid gap-4 text-xl">
+                                    {['date', 'day', 'time', 'venue'].map(field => (
+                                        <div key={field} className="flex flex-col md:flex-row justify-center items-center gap-2">
+                                            <span>
+                                                <EditableText admin={isAdmin} data={currentData[field + 'Label']} onChange={v=>updateSection('details', {[field + 'Label']:v})} />
+                                            </span>
+                                            <span>
+                                                <EditableText admin={isAdmin} data={currentData[field]} onChange={v=>updateSection('details', {[field]:v})} />
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-12">
+                                    <div className="mb-6">
+                                        <EditableText admin={isAdmin} data={currentData.scheduleTitle} onChange={v=>updateSection('details', {scheduleTitle:v})} />
+                                    </div>
+                                    <ul className="space-y-3">
+                                        {currentData.schedule.map((item, idx) => (
+                                            <li key={idx} className="flex justify-center items-center gap-2 relative">
+                                                <EditableText admin={isAdmin} data={item} onChange={v => {
+                                                    const newSched = [...currentData.schedule];
+                                                    newSched[idx] = v;
+                                                    updateSection('details', {schedule: newSched});
+                                                }} className="w-full text-center" />
+                                                {isAdmin && <button onClick={() => {
+                                                    const newSched = currentData.schedule.filter((_, i) => i !== idx);
+                                                    updateSection('details', {schedule: newSched});
+                                                }} className="text-red-500 text-sm ml-2 absolute -right-6">[x]</button>}
+                                            </li>
+                                        ))}
+                                        {isAdmin && <button onClick={() => updateSection('details', {schedule: [...currentData.schedule, {text:"New Event", style:{}}]})} className="text-sm bg-indigo-100 px-2 rounded mt-2">+ Add Time</button>}
+                                    </ul>
+                                </div>
+                            </div>
+                        );
+
+                    case 'rules':
+                        return commonLayout(
+                            <div className="space-y-6 text-left text-lg px-4 md:px-12">
+                                <div className="mb-8 text-center">
+                                    <EditableText admin={isAdmin} data={currentData.title} onChange={v=>updateSection('rules', {title:v})} />
+                                </div>
+                                <ol className="list-none space-y-6">
+                                    {currentData.items.map((item, idx) => (
+                                        <li key={idx} className="relative pl-2">
+                                            <EditableText admin={isAdmin} data={item} onChange={v => {
+                                                const newItems = [...currentData.items];
+                                                newItems[idx] = v;
+                                                updateSection('rules', {items: newItems});
+                                            }} multiline className="w-full" />
+                                            {isAdmin && <button onClick={() => {
+                                                const newItems = currentData.items.filter((_, i) => i !== idx);
+                                                updateSection('rules', {items: newItems});
+                                            }} className="absolute -left-6 top-0 text-red-500 text-sm">[x]</button>}
+                                        </li>
+                                    ))}
+                                    {isAdmin && <button onClick={() => updateSection('rules', {items: [...currentData.items, {text:"New Rule", style:{}}]})} className="text-sm bg-blue-100 px-2 rounded mt-2">+ Add Rule</button>}
+                                </ol>
+                            </div>
+                        );
+
+                    case 'general':
+                         return commonLayout(
+                            <div className="space-y-8 text-lg">
+                                <div className="mb-8">
+                                    <EditableText admin={isAdmin} data={currentData.title} onChange={v=>updateSection('general', {title:v})} />
+                                </div>
+                                {currentData.sections.map((section, sIdx) => (
+                                    <div key={sIdx} className="text-left md:text-center space-y-2 border-b border-gray-200 pb-4 last:border-0">
+                                        <h3>
+                                            <EditableText admin={isAdmin} data={section.title} onChange={v => {
+                                                const newSections = [...currentData.sections];
+                                                newSections[sIdx].title = v;
+                                                updateSection('general', {sections: newSections});
+                                            }} />
+                                        </h3>
+                                        <ul className="space-y-2">
+                                            {section.content.map((line, lIdx) => (
+                                                <li key={lIdx} className="flex flex-col items-center">
+                                                     <span className="hidden md:inline text-green-800 mr-2">• </span>
+                                                     <EditableText admin={isAdmin} data={line} onChange={v => {
+                                                        const newSections = [...currentData.sections];
+                                                        newSections[sIdx].content[lIdx] = v;
+                                                        updateSection('general', {sections: newSections});
+                                                    }} multiline className="w-full md:w-3/4 text-center" />
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ))}
+                            </div>
+                        );
+
+                    case 'judgement':
+                        return commonLayout(
+                            <div className="space-y-8 text-lg">
+                                <div className="mb-8">
+                                    <EditableText admin={isAdmin} data={currentData.title} onChange={v=>updateSection('judgement', {title:v})} />
+                                </div>
+                                <ol className="list-none space-y-6 text-xl">
+                                    {currentData.criteria.map((item, idx) => (
+                                        <li key={idx} className="p-2">
+                                            <EditableText admin={isAdmin} data={item} onChange={v => {
+                                                const newItems = [...currentData.criteria];
+                                                newItems[idx] = v;
+                                                updateSection('judgement', {criteria: newItems});
+                                            }} className="w-full text-center" />
+                                        </li>
+                                    ))}
+                                </ol>
+                                <div>
+                                    <EditableText admin={isAdmin} data={currentData.quote} onChange={v=>updateSection('judgement', {quote:v})} />
+                                </div>
+                            </div>
+                        );
+
+                    case 'registration':
+                        const reg = data.registration;
+                        return commonLayout(
+                             <div>
+                                <div className="inline-block p-4 bg-green-100/80 rounded-full mb-4 shadow-sm">
+                                    <Icon name="UserPlus" className="w-16 h-16 text-green-700" />
+                                </div>
+                                <h3 className="text-2xl font-bold text-gray-900 mb-2 font-title">Event Registration</h3>
+                                <div className="text-gray-800 mb-8 text-xl">
+                                    Registration will be done through the shared link below.<br />
+                                    Please complete by <span>
+                                        <EditableText admin={isAdmin} data={reg.deadline} onChange={v => updateSection('registration', {deadline: v})} className="" />
+                                    </span>.
+                                </div>
+                                
+                                <div className="space-y-4 max-w-md mx-auto">
+                                    {isAdmin ? (
+                                        <div className="bg-gray-100/90 p-4 rounded text-left font-sans border-2 border-dashed border-green-500">
+                                            <label className="block text-sm font-bold mb-1 text-green-900">Registration Link URL:</label>
+                                            <input 
+                                                className="w-full p-2 border rounded mb-2 text-black" 
+                                                value={reg.regLink}
+                                                onChange={e => updateSection('registration', {regLink: e.target.value})}
+                                                placeholder="https://..."
+                                            />
+                                        </div>
+                                    ) : null}
+
+                                    <a 
+                                        href={reg.regLink} 
+                                        target="_blank" 
+                                        rel="noreferrer"
+                                        className="block w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-lg transition-all transform hover:scale-105 shadow-md flex items-center justify-center gap-2 font-sans"
+                                    >
+                                       <Icon name="UserPlus" className="w-5 h-5"/> Click Here to Register Online
+                                    </a>
+                                    <div className="mt-2">
+                                        <EditableText admin={isAdmin} data={reg.disclaimer} onChange={v => updateSection('registration', {disclaimer: v})} className="" />
+                                    </div>
+                                </div>
+                            </div>
+                        );
+
+                    case 'contact':
+                        const c = data.contact;
+                        return commonLayout(
+                            <div>
+                                <div className="text-center mb-8">
+                                    <div className="inline-block p-3 bg-red-100/80 rounded-full mb-2 shadow-sm">
+                                        <Icon name="Phone" className="w-8 h-8 text-red-700" />
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-gray-900 font-title">Contact Us</h3>
+                                    <p className="text-gray-800 font-medium italic">For any queries regarding the competition</p>
+                                </div>
+
+                                <div className="space-y-6 max-w-md mx-auto">
+                                    {c.contacts.map((contact, idx) => (
+                                        <div key={idx} className="flex items-center p-4 bg-red-50/60 rounded-lg border border-red-200">
+                                            <div className="bg-red-200/80 p-3 rounded-full mr-4">
+                                                <Icon name="Phone" className="w-6 h-6 text-red-800" />
+                                            </div>
+                                            <div className="flex-grow text-left">
+                                                <h4>
+                                                    <EditableText 
+                                                        admin={isAdmin} data={contact.name} 
+                                                        onChange={v => {
+                                                            const newC = [...c.contacts];
+                                                            newC[idx].name = v;
+                                                            updateSection('contact', {contacts: newC});
+                                                        }} 
+                                                        className="" 
+                                                    />
+                                                </h4>
+                                                <p>
+                                                    <EditableText 
+                                                        admin={isAdmin} data={contact.role} 
+                                                        onChange={v => {
+                                                            const newC = [...c.contacts];
+                                                            newC[idx].role = v;
+                                                            updateSection('contact', {contacts: newC});
+                                                        }} 
+                                                        className="" 
+                                                    />
+                                                </p>
+                                                <div>
+                                                    <EditableText 
+                                                        admin={isAdmin} data={contact.phone} 
+                                                        onChange={v => {
+                                                            const newC = [...c.contacts];
+                                                            newC[idx].phone = v;
+                                                            updateSection('contact', {contacts: newC});
+                                                        }} 
+                                                        className="" 
+                                                    />
+                                                </div>
+                                            </div>
+                                            {isAdmin && (
+                                                <button onClick={() => {
+                                                    const newC = c.contacts.filter((_, i) => i !== idx);
+                                                    updateSection('contact', {contacts: newC});
+                                                }} className="text-red-500 font-sans">[x]</button>
+                                            )}
+                                        </div>
+                                    ))}
+                                    {isAdmin && (
+                                        <button 
+                                            onClick={() => updateSection('contact', {contacts: [...c.contacts, {name: {text:"New Name", style:{}}, role: {text:"Role", style:{}}, phone: {text:"0000000000", style:{}}}]})}
+                                            className="w-full py-2 bg-red-100 text-red-800 rounded font-bold font-sans"
+                                        >+ Add Contact</button>
+                                    )}
+                                </div>
+                            </div>
+                        );
+
+                    default: return null;
+                }
+            };
+
+            const getColorClass = (colorName, isActive) => {
+                const baseClasses = "text-white shadow-sm transition-all duration-300 transform";
+                const map = {
+                    violet: isActive 
+                        ? 'bg-violet-700 scale-110 z-10 shadow-xl ring-2 ring-violet-300' 
+                        : 'bg-violet-500 hover:bg-violet-600 hover:scale-105 opacity-90',
+                    indigo: isActive 
+                        ? 'bg-indigo-700 scale-110 z-10 shadow-xl ring-2 ring-indigo-300' 
+                        : 'bg-indigo-500 hover:bg-indigo-600 hover:scale-105 opacity-90',
+                    blue: isActive 
+                        ? 'bg-blue-700 scale-110 z-10 shadow-xl ring-2 ring-blue-300' 
+                        : 'bg-blue-500 hover:bg-blue-600 hover:scale-105 opacity-90',
+                    green: isActive 
+                        ? 'bg-green-700 scale-110 z-10 shadow-xl ring-2 ring-green-300' 
+                        : 'bg-green-500 hover:bg-green-600 hover:scale-105 opacity-90',
+                    yellow: isActive 
+                        ? 'bg-yellow-400 text-black scale-110 z-10 shadow-xl ring-2 ring-yellow-200' 
+                        : 'bg-yellow-300 text-black hover:bg-yellow-400 hover:scale-105 opacity-90',
+                    orange: isActive 
+                        ? 'bg-orange-600 scale-110 z-10 shadow-xl ring-2 ring-orange-300' 
+                        : 'bg-orange-500 hover:bg-orange-600 hover:scale-105 opacity-90',
+                    red: isActive 
+                        ? 'bg-red-700 scale-110 z-10 shadow-xl ring-2 ring-red-300' 
+                        : 'bg-red-600 hover:bg-red-700 hover:scale-105 opacity-90',
+                };
+                return `${baseClasses} ${map[colorName]}`;
+            };
+            
+            const getMobileColorClass = (colorName, isActive) => {
+                 const map = {
+                    violet: isActive ? 'bg-violet-600 text-white border-violet-800' : 'bg-violet-50 text-violet-900 hover:bg-violet-100',
+                    indigo: isActive ? 'bg-indigo-600 text-white border-indigo-800' : 'bg-indigo-50 text-indigo-900 hover:bg-indigo-100',
+                    blue: isActive ? 'bg-blue-600 text-white border-blue-800' : 'bg-blue-50 text-blue-900 hover:bg-blue-100',
+                    green: isActive ? 'bg-green-600 text-white border-green-800' : 'bg-green-50 text-green-900 hover:bg-green-100',
+                    yellow: isActive ? 'bg-yellow-400 text-black border-yellow-600' : 'bg-yellow-50 text-yellow-900 hover:bg-yellow-100',
+                    orange: isActive ? 'bg-orange-500 text-white border-orange-700' : 'bg-orange-50 text-orange-900 hover:bg-orange-100',
+                    red: isActive ? 'bg-red-600 text-white border-red-800' : 'bg-red-50 text-red-900 hover:bg-red-100',
+                };
+                return map[colorName];
+            }
+
+            if (isLoading) {
+                return <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white"><Icon name="Loader" className="w-12 h-12 text-purple-500"/></div>;
+            }
+
+            return (
+                <div className="min-h-screen bg-gray-100 font-sans flex flex-col">
+                    
+                    {/* Header Section */}
+                    <header className="relative h-[60vh] min-h-[400px] flex items-center justify-center overflow-hidden bg-gray-900">
+                        {/* Header Background */}
+                        <div className="absolute inset-0 z-0">
+                            <div className="absolute inset-0 bg-black/50 z-10"></div>
+                            {data.header.bgType === 'video' ? (
+                                <video key={data.header.bgUrl} autoPlay muted loop playsInline className="w-full h-full object-cover" src={data.header.bgUrl}>
+                                    Your browser does not support the video tag.
+                                </video>
+                            ) : (
+                                <div className="w-full h-full bg-cover bg-center" style={{backgroundImage: `url(${data.header.bgUrl})`}}></div>
+                            )}
+                        </div>
+
+                        {/* Admin Header Controls */}
+                        {isAdmin && (
+                            <BackgroundControl 
+                                data={data.header} 
+                                onUpdate={(updates) => updateSection('header', updates)}
+                                label="Main Header"
+                                onError={setErrorMsg}
+                            />
+                        )}
+
+                        <div className="relative z-20 text-center text-white px-4 animate-slideUp max-w-4xl">
+                            <h2 className="mb-2">
+                                <EditableText admin={isAdmin} data={data.header.schoolName} onChange={v => updateSection('header', {schoolName: v})} className="bg-transparent" />
+                            </h2>
+                            <h1 className="mb-4">
+                                <EditableText admin={isAdmin} data={data.header.title} onChange={v => updateSection('header', {title: v})} className="bg-transparent" />
+                            </h1>
+                            <div className="w-32 h-2 bg-yellow-400 mx-auto rounded-full mb-6"></div>
+                            <p className="max-w-2xl mx-auto">
+                                <EditableText admin={isAdmin} data={data.header.subtitle} onChange={v => updateSection('header', {subtitle: v})} className="bg-transparent" />
+                            </p>
+                        </div>
+                    </header>
+
+                    {/* Navbar */}
+                    <nav className="sticky top-0 z-40 bg-white shadow-lg border-b border-gray-200">
+                        <div className="max-w-7xl mx-auto px-4">
+                            <div className="flex justify-between md:justify-center items-center min-h-[80px]">
+                                <div className="md:hidden flex items-center p-4">
+                                    <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-gray-700 focus:outline-none">
+                                        {isMenuOpen ? <Icon name="X" className="w-8 h-8"/> : <Icon name="Menu" className="w-8 h-8"/>}
+                                    </button>
+                                    <span className="ml-4 font-bold text-gray-700 text-lg md:hidden">Menu</span>
+                                </div>
+                                <div className="hidden md:flex flex-wrap justify-center gap-1 p-2">
+                                    {navItems.map((item) => (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => setActiveTab(item.id)}
+                                            className={`px-4 lg:px-6 py-3 font-bold text-xs lg:text-sm uppercase tracking-wider rounded-md 
+                                                ${getColorClass(tabColors[item.id], activeTab === item.id)}`}
+                                        >
+                                            {item.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        {isMenuOpen && (
+                            <div className="md:hidden bg-white border-t border-gray-200">
+                                {navItems.map((item) => (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => { setActiveTab(item.id); setIsMenuOpen(false); }}
+                                        className={`block w-full text-left px-6 py-3 border-l-4 font-bold uppercase text-sm ${getMobileColorClass(tabColors[item.id], activeTab === item.id)}`}
+                                    >
+                                        {item.label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </nav>
+
+                    {/* Content */}
+                    <main className="w-full flex-grow">
+                        {renderContent()}
+                    </main>
+
+                     {/* Error/Notification Overlay */}
+                     {errorMsg && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
+                            <div className="bg-white p-6 rounded-lg shadow-2xl max-w-md w-full border-l-4 border-red-500">
+                                <div className="flex justify-between items-start mb-2">
+                                    <h3 className="font-bold text-red-600 text-lg">Attention</h3>
+                                    <button onClick={() => setErrorMsg(null)} className="text-gray-400 hover:text-gray-600">
+                                        <Icon name="X" className="w-5 h-5"/>
+                                    </button>
+                                </div>
+                                <p className="text-gray-700 text-sm mb-4">{errorMsg}</p>
+                                <button 
+                                    onClick={() => setErrorMsg(null)}
+                                    className="w-full py-2 bg-red-600 hover:bg-red-700 text-white rounded font-bold text-sm"
+                                >
+                                    Dismiss
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Footer & Admin Toggle */}
+                    <footer className="bg-gray-900 text-white py-8 relative">
+                        <div className="max-w-6xl mx-auto px-4 text-center">
+                            <h3 className="text-2xl font-bold mb-4 font-title">
+                                {typeof data.header.schoolName === 'object' ? data.header.schoolName.text : data.header.schoolName}
+                            </h3>
+                            <p className="text-gray-400 mb-6 font-body-cursive">Nurturing Excellence and Innovation</p>
+                            
+                            <div className="mt-8 pt-8 border-t border-gray-800 flex justify-center items-center gap-4">
+                                <button 
+                                    onClick={() => {
+                                        if(isAdmin) saveChanges();
+                                        setIsAdmin(!isAdmin);
+                                    }}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded text-xs font-bold transition-all
+                                        ${isAdmin ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-gray-800 hover:bg-gray-700 text-gray-400'}`}
+                                >
+                                    {isAdmin ? <Icon name="Unlock" className="w-3 h-3"/> : <Icon name="Lock" className="w-3 h-3"/>}
+                                    {isAdmin ? 'Exit Admin Mode & Save' : 'Admin Login'}
+                                </button>
+                                
+                                {isAdmin && (
+                                    <button 
+                                        onClick={saveChanges}
+                                        disabled={isSaving}
+                                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-bold flex items-center gap-2"
+                                    >
+                                        {isSaving ? <Icon name="Loader" className="w-3 h-3"/> : null}
+                                        {isSaving ? "Saving..." : "Save Changes"}
+                                    </button>
+                                )}
+                            </div>
+                            {showSaveMsg && <div className="text-green-400 text-xs mt-2 animate-bounce">Saved successfully!</div>}
+                        </div>
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
