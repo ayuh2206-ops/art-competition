@@ -357,7 +357,7 @@
             const sizes = ['0.8rem', '1rem', '1.25rem', '1.5rem', '2rem', '3rem', '4rem', '5rem', '6rem', '8rem'];
 
             return (
-                <div className="format-toolbar" onMouseDown={e => e.preventDefault()}>
+                <div className="format-toolbar">
                     {/* Font Family */}
                     <select 
                         value={style.fontFamily || 'inherit'} 
@@ -543,6 +543,21 @@
             );
         };
 
+        // --- WRAPPER COMPONENT (Defined Outside App) ---
+        // This fixes the focus-loss issue by ensuring the wrapper is a stable component
+        const ContentWrapper = ({ children, current, isAdmin, updateSection, label, onNotify }) => {
+            const controls = isAdmin && <BackgroundControl data={current} onUpdate={(u) => updateSection(label.id, u)} label={label.label} onNotify={onNotify} />;
+            return (
+                <div className="relative min-h-[600px] w-full flex flex-col justify-center font-body">
+                    <BackgroundLayer url={current.bgUrl} type={current.bgType} />
+                    <div className="relative z-10 w-full max-w-6xl mx-auto px-4 py-12">
+                        {controls}
+                        <div className={`max-w-4xl mx-auto p-8 relative z-10 ${glassClass} text-center`}>{children}</div>
+                    </div>
+                </div>
+            );
+        };
+
         const App = () => {
             const [activeTab, setActiveTab] = useState('home');
             const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -604,19 +619,17 @@
 
             const renderContent = () => {
                 const current = data[activeTab];
-                const controls = isAdmin && <BackgroundControl data={current} onUpdate={(u) => updateSection(activeTab, u)} label={navItems.find(n => n.id === activeTab).label} onNotify={showNotify} />;
-                
-                const Wrapper = ({ children }) => (
-                    <div className="relative min-h-[600px] w-full flex flex-col justify-center font-body">
-                        <BackgroundLayer url={current.bgUrl} type={current.bgType} />
-                        <div className="relative z-10 w-full max-w-6xl mx-auto px-4 py-12">
-                            {controls}
-                            <div className={`max-w-4xl mx-auto p-8 relative z-10 ${glassClass} text-center`}>{children}</div>
-                        </div>
-                    </div>
-                );
+                const activeNavItem = navItems.find(n => n.id === activeTab);
 
-                if (activeTab === 'home') return <Wrapper>
+                const commonProps = {
+                    current,
+                    isAdmin,
+                    updateSection,
+                    label: activeNavItem,
+                    onNotify: showNotify
+                };
+
+                if (activeTab === 'home') return <ContentWrapper {...commonProps}>
                     <div className="space-y-6 text-lg">
                         <EditableText admin={isAdmin} data={current.intro} onChange={v => updateSection('home', {intro:v})} />
                         <div className="my-4 leading-loose">
@@ -634,9 +647,9 @@
                             <h1 className="mt-4 leading-relaxed"><EditableText admin={isAdmin} data={current.slogan} onChange={v => updateSection('home', {slogan:v})} /></h1>
                         </div>
                     </div>
-                </Wrapper>;
+                </ContentWrapper>;
 
-                if (activeTab === 'details') return <Wrapper>
+                if (activeTab === 'details') return <ContentWrapper {...commonProps}>
                     <div className="space-y-6 text-lg">
                         <div className="mb-8"><EditableText admin={isAdmin} data={current.title} onChange={v => updateSection('details', {title:v})} /></div>
                         <div className="grid gap-4 text-xl">
@@ -662,9 +675,9 @@
                             </ul>
                         </div>
                     </div>
-                </Wrapper>;
+                </ContentWrapper>;
 
-                if (activeTab === 'rules') return <Wrapper>
+                if (activeTab === 'rules') return <ContentWrapper {...commonProps}>
                     <div className="space-y-6 text-left text-lg px-4 md:px-12">
                         <div className="mb-8 text-center"><EditableText admin={isAdmin} data={current.title} onChange={v => updateSection('rules', {title:v})} /></div>
                         <ol className="list-none space-y-4">
@@ -682,9 +695,9 @@
                             {isAdmin && <button onClick={() => updateSection('rules', {items: [...current.items, {text:"New Rule", style:{}}]})} className="text-xs bg-gray-200 px-2 rounded mt-2">+ Add</button>}
                         </ol>
                     </div>
-                </Wrapper>;
+                </ContentWrapper>;
 
-                if (activeTab === 'general') return <Wrapper>
+                if (activeTab === 'general') return <ContentWrapper {...commonProps}>
                     <div className="space-y-8 text-lg">
                         <div className="mb-8"><EditableText admin={isAdmin} data={current.title} onChange={v => updateSection('general', {title:v})} /></div>
                         {current.sections.map((s, i) => (
@@ -700,9 +713,9 @@
                             </div>
                         ))}
                     </div>
-                </Wrapper>;
+                </ContentWrapper>;
 
-                if (activeTab === 'judgement') return <Wrapper>
+                if (activeTab === 'judgement') return <ContentWrapper {...commonProps}>
                     <div className="space-y-8 text-lg">
                         <div className="mb-8"><EditableText admin={isAdmin} data={current.title} onChange={v => updateSection('judgement', {title:v})} /></div>
                         <ol className="list-none space-y-6 text-xl">
@@ -712,9 +725,9 @@
                         </ol>
                         <div className="mt-8"><EditableText admin={isAdmin} data={current.quote} onChange={v => updateSection('judgement', {quote:v})} /></div>
                     </div>
-                </Wrapper>;
+                </ContentWrapper>;
 
-                if (activeTab === 'registration' || activeTab === 'contact') return <Wrapper>
+                if (activeTab === 'registration' || activeTab === 'contact') return <ContentWrapper {...commonProps}>
                     {activeTab === 'registration' ? (
                         <div>
                             <div className="text-xl mb-4">Register by: <EditableText admin={isAdmin} data={current.deadline} onChange={v => updateSection('registration', {deadline:v})} /></div>
@@ -732,7 +745,7 @@
                             ))}
                         </div>
                     )}
-                </Wrapper>;
+                </ContentWrapper>;
                 return null;
             };
 
