@@ -13,9 +13,8 @@
                 errorBox.style.display = 'block';
                 errorBox.innerHTML += `<p><strong>Error:</strong> ${msg}<br><small>${url}:${line}:${col}</small></p>`;
             }
-            // Also stop the loading spinner so we don't just see a spinner forever
             const loader = document.getElementById('initial-loader');
-            if (loader) loader.innerHTML = '<p style="color:red">Failed to load application.</p>';
+            if (loader) loader.innerHTML = '<p style="color:red; font-weight:bold;">Application Error. See details above.</p>';
             return false;
         };
     </script>
@@ -30,7 +29,7 @@
     <!-- Babel for JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Firebase Compat Scripts (Solves 'require is not defined') -->
+    <!-- FIREBASE COMPAT SCRIPTS (The Fix for Single File Hosting) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -176,7 +175,6 @@
     <div id="root"></div>
 
     <!-- MAIN SCRIPT -->
-    <!-- Removed data-type="module" and imports to prevent RequireJS errors -->
     <script type="text/babel">
         
         // --- FIREBASE CONFIG ---
@@ -287,7 +285,10 @@
                 title: createTextObj("Rules and Regulations", { fontFamily: 'Cinzel', fontSize: '2rem', textDecoration: 'underline', fontWeight: 'bold' }),
                 items: [
                     createTextObj("1. The 3 best Artworks will be selected from each Grade."),
-                    createTextObj("2. The following winners will be announced per Grade: 1st Prize, 2nd Prize, 3rd Prize"),
+                    createTextObj("2. The following winners will be announced per Grade:"),
+                    createTextObj("   * 1st Prize"),
+                    createTextObj("   * 2nd Prize"),
+                    createTextObj("   * 3rd Prize"),
                     createTextObj("3. The painting must be relevant to the given theme."),
                     createTextObj("4. A3 size paper will be provided by the host school. Paper Plates will be provided for Warli Painting."),
                     createTextObj("5. Use of reference images and tracing of pictures is not allowed for the participants.")
@@ -345,10 +346,10 @@
                 bgType: "image",
                 title: createTextObj("Judgement Criteria", { fontFamily: 'Cinzel', fontSize: '2rem', textDecoration: 'underline', fontWeight: 'bold' }),
                 criteria: [
-                    createTextObj("1. Creativity (Use of theme in the artwork)"),
+                    createTextObj("1. Creativity (Use of theme in the art work)"),
                     createTextObj("2. Colour Scheme"),
                     createTextObj("3. Presentation (Neatness and Sharpness)"),
-                    createTextObj("4. Composition (Use of space on the sheet)")
+                    createTextObj("4. Composition (Use of space in the sheet)")
                 ],
                 quote: createTextObj("“Unleash Your Creativity, For Art Knows No Boundaries”", { fontFamily: 'Great Vibes', fontSize: '2rem', color: '#713f12', borderTop: '2px solid #eab308', paddingTop: '1rem', marginTop: '2rem' })
             },
@@ -654,7 +655,9 @@
                             setIsLoading(false);
                         }, (error) => {
                             console.error("Snapshot error:", error);
-                            setErrorMsg("Failed to load live data.");
+                            // --- IMPROVED ERROR MESSAGE ---
+                            // This will show exactly why it failed (e.g., permission-denied)
+                            setErrorMsg(`Failed to load live data: ${error.code || error.message}`);
                             setIsLoading(false);
                         });
 
