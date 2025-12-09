@@ -193,9 +193,12 @@
                 Lock: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
                 Unlock: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>,
                 UserPlus: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>,
+                User: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
                 Phone: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>,
+                Briefcase: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>,
                 Menu: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>,
                 X: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>,
+                Plus: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>,
                 Bold: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14 12a4 4 0 0 0 0-8H6v8"/><path d="M15 20a4 4 0 0 0 0-8H6v8Z"/></svg>,
                 Italic: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="19" x2="10" y1="4" y2="4"/><line x1="14" x2="5" y1="20" y2="20"/><line x1="15" x2="9" y1="4" y2="20"/></svg>,
                 Alert: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>,
@@ -735,14 +738,57 @@
                             <a href={current.regLink} target="_blank" className="block w-full bg-green-600 text-white font-bold py-4 rounded-lg">Register Online</a>
                         </div>
                     ) : (
-                        <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
                             {current.contacts.map((c, i) => (
-                                <div key={i} className="p-4 border border-red-200 rounded-lg">
-                                    <EditableText admin={isAdmin} data={c.name} onChange={v => { const n = [...current.contacts]; n[i].name = v; updateSection('contact', {contacts:n}); }} />
-                                    <EditableText admin={isAdmin} data={c.role} onChange={v => { const n = [...current.contacts]; n[i].role = v; updateSection('contact', {contacts:n}); }} />
-                                    <EditableText admin={isAdmin} data={c.phone} onChange={v => { const n = [...current.contacts]; n[i].phone = v; updateSection('contact', {contacts:n}); }} />
+                                <div key={i} className="relative group bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-red-100 flex flex-col items-center text-center transition-all duration-300 hover:shadow-2xl hover:-translate-y-1">
+                                    {isAdmin && (
+                                        <button 
+                                            onClick={() => { const n = current.contacts.filter((_, idx) => idx !== i); updateSection('contact', {contacts:n}); }} 
+                                            className="absolute top-2 right-2 p-2 text-red-400 hover:text-red-600 bg-red-50 rounded-full"
+                                        >
+                                            <Icon name="X" className="w-4 h-4"/>
+                                        </button>
+                                    )}
+                                    
+                                    <div className="w-20 h-20 bg-gradient-to-tr from-red-100 to-orange-100 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                                        <Icon name="User" className="w-10 h-10 text-red-500" />
+                                    </div>
+
+                                    <div className="w-full mb-2">
+                                        <div className="text-2xl font-bold text-gray-800 font-title">
+                                            <EditableText admin={isAdmin} data={c.name} onChange={v => { const n = [...current.contacts]; n[i].name = v; updateSection('contact', {contacts:n}); }} />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-center gap-2 text-red-600 font-medium mb-4 w-full">
+                                        <Icon name="Briefcase" className="w-4 h-4" />
+                                        <EditableText admin={isAdmin} data={c.role} onChange={v => { const n = [...current.contacts]; n[i].role = v; updateSection('contact', {contacts:n}); }} />
+                                    </div>
+
+                                    <div className="mt-auto w-full pt-4 border-t border-red-100">
+                                        <div className="flex items-center justify-center gap-2 text-lg font-bold text-gray-700 bg-red-50 py-2 rounded-lg group-hover:bg-red-600 group-hover:text-white transition-colors duration-300">
+                                            <Icon name="Phone" className="w-5 h-5" />
+                                            <EditableText admin={isAdmin} data={c.phone} onChange={v => { const n = [...current.contacts]; n[i].phone = v; updateSection('contact', {contacts:n}); }} />
+                                        </div>
+                                    </div>
                                 </div>
                             ))}
+                            
+                            {isAdmin && (
+                                <button 
+                                    onClick={() => updateSection('contact', {contacts: [...current.contacts, {
+                                        name: {text:"New Contact", style:{}}, 
+                                        role: {text:"Role/Position", style:{}}, 
+                                        phone: {text:"+91 0000000000", style:{}}
+                                    }]})}
+                                    className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-red-300 rounded-2xl bg-red-50/50 hover:bg-red-50 transition-all text-red-400 font-bold gap-2 min-h-[300px]"
+                                >
+                                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                                        <Icon name="Plus" className="w-8 h-8"/>
+                                    </div>
+                                    <span>Add New Contact</span>
+                                </button>
+                            )}
                         </div>
                     )}
                 </ContentWrapper>;
