@@ -30,6 +30,12 @@
     <!-- Babel for JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <!-- Firebase Compat Scripts (Solves 'require is not defined') -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+
     <!-- Lucide Icons (Script version) -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -170,15 +176,9 @@
     <div id="root"></div>
 
     <!-- MAIN SCRIPT -->
-    <!-- data-type="module" is CRITICAL for imports to work inside babel standalone -->
-    <!-- data-presets="env,react" ensures proper compilation -->
-    <script type="text/babel" data-type="module" data-presets="env,react">
-        // Import Firebase modules using standard ESM URL syntax
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-
+    <!-- Removed data-type="module" and imports to prevent RequireJS errors -->
+    <script type="text/babel">
+        
         // --- FIREBASE CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyACH3hBDHmAGD6ubmloy3Xcdq2zbBEu5hY",
@@ -190,28 +190,29 @@
             measurementId: "G-57FCM19J06"
         };
 
-        // Initialize Firebase
-        // Wrapped in try-catch to report config errors
+        // Initialize Firebase (Compat Mode)
         let app, auth, db, storage;
         try {
-            app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-            storage = getStorage(app);
+            app = firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.firestore();
+            storage = firebase.storage();
         } catch (e) {
             console.error("Firebase Init Error:", e);
-            throw new Error("Failed to initialize database connection: " + e.message);
+            const errBox = document.getElementById('global-error-box');
+            if(errBox) {
+                errBox.style.display = 'block';
+                errBox.innerText = "Firebase Error: " + e.message;
+            }
         }
 
-        // App ID for Firestore path (using environment var or fallback)
-        // Check for undefined to prevent ReferenceErrors
+        // App ID for Firestore path
         const APP_ID = typeof window.__app_id !== 'undefined' ? window.__app_id : 'master-stroke-default';
         const COLLECTION_NAME = 'masterStrokeData';
         const DOC_ID = 'siteContent';
 
         // Destructure React globals
-        // Note: Since we are in a module, we access React from the global window object provided by the UMD script
-        const { useState, useEffect, useRef } = window.React;
+        const { useState, useEffect, useRef } = React;
 
         // --- ICONS COMPONENT ---
         const Icon = ({ name, className }) => {
@@ -504,10 +505,11 @@
                 try {
                     // Create a unique filename for Storage
                     const filename = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
-                    const storageRef = ref(storage, `artifacts/${APP_ID}/public/media/${filename}`);
+                    // COMPAT MODE SYNTAX
+                    const storageRef = storage.ref().child(`artifacts/${APP_ID}/public/media/${filename}`);
                     
-                    const snapshot = await uploadBytes(storageRef, file);
-                    const downloadURL = await getDownloadURL(snapshot.ref);
+                    const snapshot = await storageRef.put(file);
+                    const downloadURL = await snapshot.ref.getDownloadURL();
 
                     onUpdate({
                         ...data,
@@ -625,27 +627,28 @@
                 const initAuth = async () => {
                      try {
                         // Anonymous login to allow reading/writing based on security rules
-                        await signInAnonymously(auth);
+                        await auth.signInAnonymously();
                      } catch (error) {
                          console.error("Auth failed", error);
                          setErrorMsg("Authentication failed. App may be read-only.");
                      }
                 };
-                initAuth();
+                if(auth) initAuth();
 
-                const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+                const unsubscribeAuth = auth ? auth.onAuthStateChanged((currentUser) => {
                     setUser(currentUser);
                     if (currentUser) {
-                        // Set up Firestore listener
-                        const docRef = doc(db, 'artifacts', APP_ID, 'public', 'data', COLLECTION_NAME, DOC_ID);
+                        // COMPAT MODE SYNTAX
+                        // db.collection().doc() structure
+                        // Path: artifacts/{APP_ID}/public/data/{COLLECTION_NAME}/{DOC_ID}
+                        const docPath = `artifacts/${APP_ID}/public/data/${COLLECTION_NAME}/${DOC_ID}`;
+                        const docRef = db.doc(docPath);
                         
-                        const unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
-                            if (docSnap.exists()) {
+                        const unsubscribeSnapshot = docRef.onSnapshot((docSnap) => {
+                            if (docSnap.exists) {
                                 const cloudData = docSnap.data();
-                                // Merge with initial structure to ensure new fields exist if schema changes
                                 setData(prev => ({ ...prev, ...cloudData }));
                             } else {
-                                // Doc doesn't exist yet, we can optionally create it here or wait for first save
                                 console.log("No data found, using defaults.");
                             }
                             setIsLoading(false);
@@ -659,7 +662,7 @@
                     } else {
                          setIsLoading(false);
                     }
-                });
+                }) : () => {};
 
                 return () => unsubscribeAuth();
             }, []);
@@ -677,8 +680,8 @@
                 }
                 setIsSaving(true);
                 try {
-                    const docRef = doc(db, 'artifacts', APP_ID, 'public', 'data', COLLECTION_NAME, DOC_ID);
-                    await setDoc(docRef, data);
+                    const docPath = `artifacts/${APP_ID}/public/data/${COLLECTION_NAME}/${DOC_ID}`;
+                    await db.doc(docPath).set(data);
                     
                     setShowSaveMsg(true);
                     setTimeout(() => setShowSaveMsg(false), 2000);
