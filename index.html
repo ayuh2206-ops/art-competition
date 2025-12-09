@@ -9,9 +9,7 @@
     <script>
         window.onerror = function(msg, url, line, col, error) {
             console.error("Global Error:", msg);
-            // Ignore permission errors (handled in app)
             if (msg.includes('permission-denied')) return true;
-            // Show critical errors on screen so you aren't stuck on spinner
             const loader = document.getElementById('initial-loader');
             if (loader) loader.innerHTML = `<div style="color:#ef4444; text-align:center; padding:20px;">
                 <p style="font-size:1.2em; font-weight:bold;">Something went wrong</p>
@@ -36,8 +34,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
-
-    <!-- REMOVED: Lucide Script (This was causing the "require is not defined" crash) -->
 
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Great+Vibes&family=Dancing+Script:wght@400;700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
@@ -335,6 +331,9 @@
                 ]
             }
         };
+
+        // --- COMPONENTS (Standard) ---
+        const glassClass = "bg-white/40 backdrop-blur-md border border-white/40 shadow-2xl rounded-xl text-gray-900";
 
         const TextToolbar = ({ style, onStyleChange }) => {
             const fonts = [
