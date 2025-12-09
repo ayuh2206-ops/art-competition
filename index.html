@@ -14,6 +14,7 @@
             if (loader) loader.innerHTML = `<div style="color:#ef4444; text-align:center; padding:20px;">
                 <p style="font-size:1.2em; font-weight:bold;">Something went wrong</p>
                 <p style="font-size:0.8em; opacity:0.8;">${msg}</p>
+                <p style="font-size:0.7em;">Check console for details.</p>
             </div>`;
             return false;
         };
@@ -34,6 +35,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Great+Vibes&family=Dancing+Script:wght@400;700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
@@ -179,6 +183,9 @@
 
         const { useState, useEffect, useRef } = React;
 
+        // --- GLOBAL STYLES ---
+        const glassClass = "bg-white/40 backdrop-blur-md border border-white/40 shadow-2xl rounded-xl text-gray-900";
+
         // --- ICONS ---
         const Icon = ({ name, className }) => {
             const icons = {
@@ -190,7 +197,9 @@
                 Menu: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>,
                 X: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>,
                 Bold: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14 12a4 4 0 0 0 0-8H6v8"/><path d="M15 20a4 4 0 0 0 0-8H6v8Z"/></svg>,
-                Italic: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="19" x2="10" y1="4" y2="4"/><line x1="14" x2="5" y1="20" y2="20"/><line x1="15" x2="9" y1="4" y2="20"/></svg>
+                Italic: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="19" x2="10" y1="4" y2="4"/><line x1="14" x2="5" y1="20" y2="20"/><line x1="15" x2="9" y1="4" y2="20"/></svg>,
+                Alert: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>,
+                Check: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"/></svg>
             };
             return icons[name] || null;
         };
@@ -332,8 +341,7 @@
             }
         };
 
-        // --- COMPONENTS (Standard) ---
-        const glassClass = "bg-white/40 backdrop-blur-md border border-white/40 shadow-2xl rounded-xl text-gray-900";
+        // --- COMPONENTS ---
 
         const TextToolbar = ({ style, onStyleChange }) => {
             const fonts = [
@@ -420,7 +428,25 @@
             );
         };
 
-        const BackgroundControl = ({ data, onUpdate, label, onError }) => {
+        // --- POPUP MESSAGE ---
+        const PopupMessage = ({ msg, type, onClose }) => {
+            if (!msg) return null;
+            const bgClass = type === 'error' ? 'bg-red-50 border-red-500 text-red-700' : 'bg-green-50 border-green-500 text-green-700';
+            const iconName = type === 'error' ? 'Alert' : 'Check';
+            
+            return (
+                <div className={`fixed top-24 left-1/2 transform -translate-x-1/2 z-[100] px-6 py-4 rounded-lg shadow-2xl border-l-4 flex items-center gap-4 ${bgClass} min-w-[300px] animate-fadeIn`}>
+                    <Icon name={iconName} className="w-6 h-6"/>
+                    <div className="flex-grow">
+                        <p className="font-bold">{type === 'error' ? 'Attention' : 'Success'}</p>
+                        <p className="text-sm opacity-90">{msg}</p>
+                    </div>
+                    <button onClick={onClose} className="hover:opacity-70"><Icon name="X" className="w-5 h-5"/></button>
+                </div>
+            );
+        };
+
+        const BackgroundControl = ({ data, onUpdate, label, onNotify }) => {
             const [isUploading, setIsUploading] = useState(false);
             const handleFileUpload = async (e) => {
                 const file = e.target.files[0];
@@ -431,34 +457,71 @@
                     const storageRef = storage.ref().child(`artifacts/${APP_ID}/public/media/${filename}`);
                     const snapshot = await storageRef.put(file);
                     const downloadURL = await snapshot.ref.getDownloadURL();
-                    onUpdate({ ...data, bgUrl: downloadURL, bgType: file.type.startsWith('video/') ? 'video' : 'image' });
+                    onUpdate({ 
+                        ...data, 
+                        bgUrl: downloadURL, 
+                        bgType: file.type.startsWith('video/') ? 'video' : 'image' 
+                    });
+                    onNotify("File uploaded successfully!", 'success');
                 } catch (err) {
                     console.error(err);
-                    onError("Upload failed. Check console.");
+                    onNotify("Upload failed. Check console.", 'error');
                 } finally {
                     setIsUploading(false);
                 }
             };
 
+            const handleUrlChange = (val) => {
+                // Auto-detect video
+                const isVideo = val.endsWith('.mp4') || val.endsWith('.webm') || val.endsWith('.ogg');
+                onUpdate({
+                    ...data, 
+                    bgUrl: val,
+                    bgType: isVideo ? 'video' : 'image' // Auto-switch logic
+                });
+            };
+
+            const handleTypeChange = (type) => {
+                onUpdate({...data, bgType: type});
+            };
+
             return (
                 <div className="absolute top-4 right-4 z-50 bg-black/80 p-4 rounded text-white text-sm w-64 shadow-xl border border-purple-500">
-                    <h4 className="font-bold mb-2 text-purple-300">{label} Background</h4>
+                    <h4 className="font-bold mb-2 text-purple-300">Editing: {label.toUpperCase()}</h4>
+                    
+                    {/* NEW: Type Selector */}
+                    <div className="mb-3">
+                        <label className="block text-xs text-gray-400 font-bold mb-1">Background Type:</label>
+                        <select 
+                            value={data.bgType} 
+                            onChange={(e) => handleTypeChange(e.target.value)}
+                            className="w-full text-black text-xs p-1 rounded"
+                        >
+                            <option value="image">Image</option>
+                            <option value="video">Video</option>
+                        </select>
+                    </div>
+
                     <div className="mb-2">
                         <label className="block text-xs text-green-400 font-bold">Upload (Cloud)</label>
                         {isUploading ? <span className="text-xs">Uploading...</span> : <input type="file" onChange={handleFileUpload} className="text-xs"/>}
                     </div>
                     <div>
                         <label className="block text-xs text-blue-400 font-bold">Or URL</label>
-                        <input type="text" value={data.bgUrl || ''} onChange={(e) => onUpdate({...data, bgUrl: e.target.value})} className="w-full text-black text-xs p-1 rounded"/>
+                        <input 
+                            type="text" 
+                            value={data.bgUrl || ''} 
+                            onChange={(e) => handleUrlChange(e.target.value)} 
+                            placeholder="https://... (.mp4 for videos)"
+                            className="w-full text-black text-xs p-1 rounded"
+                        />
                     </div>
                 </div>
             );
         };
 
         const BackgroundLayer = ({ url, type }) => {
-            // Enhanced background layer to handle embed links as iframes if needed
             const isEmbed = url && (url.includes('embed') || url.includes('player'));
-            
             return (
                 <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
                     {type === 'video' ? (
@@ -484,11 +547,15 @@
             const [activeTab, setActiveTab] = useState('home');
             const [isMenuOpen, setIsMenuOpen] = useState(false);
             const [isAdmin, setIsAdmin] = useState(false);
-            const [errorMsg, setErrorMsg] = useState(null);
+            const [notification, setNotification] = useState(null); 
             const [data, setData] = useState(INITIAL_DATA);
             const [user, setUser] = useState(null);
-            const [showSaveMsg, setShowSaveMsg] = useState(false);
             const [isSaving, setIsSaving] = useState(false);
+
+            const showNotify = (msg, type = 'success') => {
+                setNotification({ msg, type });
+                setTimeout(() => setNotification(null), 4000);
+            };
 
             useEffect(() => {
                 const loader = document.getElementById('initial-loader');
@@ -503,9 +570,9 @@
                                 if (snap.exists) setData(prev => ({ ...prev, ...snap.data() }));
                             }, err => {
                                 if(err.code === 'permission-denied') {
-                                    console.warn("Permission denied. Using default content.");
+                                    showNotify("Read-only mode (Permission Denied)", 'error');
                                 } else {
-                                    setErrorMsg("Live data error: " + err.message);
+                                    showNotify("Live data error: " + err.message, 'error');
                                 }
                             });
                         }
@@ -516,13 +583,13 @@
             const updateSection = (section, updates) => setData({ ...data, [section]: { ...data[section], ...updates } });
 
             const saveChanges = async () => {
-                if (!user) return setErrorMsg("Login required to save.");
+                if (!user) return showNotify("Login required to save.", 'error');
                 setIsSaving(true);
                 try {
                     await db.doc(`artifacts/${APP_ID}/public/data/${COLLECTION_NAME}/${DOC_ID}`).set(data);
-                    setShowSaveMsg(true); setTimeout(() => setShowSaveMsg(false), 2000);
+                    showNotify("Changes Saved Successfully!", 'success');
                 } catch (e) {
-                    setErrorMsg("Save failed: " + e.code);
+                    showNotify("Save failed: " + e.code, 'error');
                 } finally {
                     setIsSaving(false);
                 }
@@ -537,7 +604,8 @@
 
             const renderContent = () => {
                 const current = data[activeTab];
-                const controls = isAdmin && <BackgroundControl data={current} onUpdate={(u) => updateSection(activeTab, u)} label={activeTab} onError={setErrorMsg} />;
+                const controls = isAdmin && <BackgroundControl data={current} onUpdate={(u) => updateSection(activeTab, u)} label={navItems.find(n => n.id === activeTab).label} onNotify={showNotify} />;
+                
                 const Wrapper = ({ children }) => (
                     <div className="relative min-h-[600px] w-full flex flex-col justify-center font-body">
                         <BackgroundLayer url={current.bgUrl} type={current.bgType} />
@@ -551,19 +619,19 @@
                 if (activeTab === 'home') return <Wrapper>
                     <div className="space-y-6 text-lg">
                         <EditableText admin={isAdmin} data={current.intro} onChange={v => updateSection('home', {intro:v})} />
-                        <div className="my-4">
+                        <div className="my-4 leading-loose">
                             <EditableText admin={isAdmin} data={current.quote} onChange={v => updateSection('home', {quote:v})} />
                         </div>
                         <EditableText admin={isAdmin} data={current.text1} onChange={v => updateSection('home', {text1:v})} multiline />
                         <div className="mt-8">
                             <EditableText admin={isAdmin} data={current.text2} onChange={v => updateSection('home', {text2:v})} />
-                            <h4 className="my-2"><EditableText admin={isAdmin} data={current.school} onChange={v => updateSection('home', {school:v})} /></h4>
+                            <h4 className="my-2 leading-relaxed"><EditableText admin={isAdmin} data={current.school} onChange={v => updateSection('home', {school:v})} /></h4>
                         </div>
                         <EditableText admin={isAdmin} data={current.invite} onChange={v => updateSection('home', {invite:v})} multiline />
                         <div className="mt-8 border-t border-gray-400 pt-6">
                             <h2><EditableText admin={isAdmin} data={current.competitionName} onChange={v => updateSection('home', {competitionName:v})} /></h2>
-                            <h3 className="my-2"><EditableText admin={isAdmin} data={current.year} onChange={v => updateSection('home', {year:v})} /></h3>
-                            <h1 className="mt-4"><EditableText admin={isAdmin} data={current.slogan} onChange={v => updateSection('home', {slogan:v})} /></h1>
+                            <h3 className="my-2 leading-relaxed"><EditableText admin={isAdmin} data={current.year} onChange={v => updateSection('home', {year:v})} /></h3>
+                            <h1 className="mt-4 leading-relaxed"><EditableText admin={isAdmin} data={current.slogan} onChange={v => updateSection('home', {slogan:v})} /></h1>
                         </div>
                     </div>
                 </Wrapper>;
@@ -647,7 +715,6 @@
                 </Wrapper>;
 
                 if (activeTab === 'registration' || activeTab === 'contact') return <Wrapper>
-                    {/* Simplified for brevity as logic is identical to others */}
                     {activeTab === 'registration' ? (
                         <div>
                             <div className="text-xl mb-4">Register by: <EditableText admin={isAdmin} data={current.deadline} onChange={v => updateSection('registration', {deadline:v})} /></div>
@@ -680,10 +747,12 @@
 
             return (
                 <div className="min-h-screen bg-gray-100 font-sans flex flex-col">
+                    <PopupMessage msg={notification?.msg} type={notification?.type} onClose={() => setNotification(null)} />
+
                     <header className="relative min-h-[60vh] h-auto py-20 flex items-center justify-center overflow-hidden bg-gray-900">
                         <div className="absolute inset-0 bg-black/50 z-10" />
                         <BackgroundLayer url={data.header.bgUrl} type={data.header.bgType} />
-                        {isAdmin && <BackgroundControl data={data.header} onUpdate={(u) => updateSection('header', u)} label="Header" onError={setErrorMsg} />}
+                        {isAdmin && <BackgroundControl data={data.header} onUpdate={(u) => updateSection('header', u)} label="Main Header" onNotify={showNotify} />}
                         <div className="relative z-20 text-center text-white px-4">
                             <h2 className="mb-2"><EditableText admin={isAdmin} data={data.header.schoolName} onChange={v => updateSection('header', {schoolName:v})} className="bg-transparent" /></h2>
                             <h1 className="mb-4"><EditableText admin={isAdmin} data={data.header.title} onChange={v => updateSection('header', {title:v})} className="bg-transparent" /></h1>
@@ -703,14 +772,6 @@
 
                     <main className="w-full flex-grow">{renderContent()}</main>
 
-                    {errorMsg && (
-                        <div className="fixed bottom-4 right-4 bg-white p-4 rounded shadow-xl border-l-4 border-red-500 z-50">
-                            <p className="text-red-600 font-bold">Attention</p>
-                            <p className="text-sm mb-2">{errorMsg}</p>
-                            <button onClick={() => setErrorMsg(null)} className="text-xs bg-red-600 text-white px-2 py-1 rounded">Dismiss</button>
-                        </div>
-                    )}
-
                     <footer className="bg-gray-900 text-white py-8 text-center relative">
                         <div className="flex justify-center gap-4 mt-4">
                             <button onClick={() => { if(isAdmin) saveChanges(); setIsAdmin(!isAdmin); }} className={`flex items-center gap-2 px-4 py-2 rounded text-xs font-bold ${isAdmin ? 'bg-red-600' : 'bg-gray-700'}`}>
@@ -719,7 +780,6 @@
                             </button>
                             {isAdmin && <button onClick={saveChanges} className="px-4 py-2 bg-green-600 rounded text-xs font-bold">{isSaving ? 'Saving...' : 'Save Changes'}</button>}
                         </div>
-                        {showSaveMsg && <div className="text-green-400 text-xs mt-2">Saved!</div>}
                     </footer>
                 </div>
             );
