@@ -202,7 +202,8 @@
                 Bold: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14 12a4 4 0 0 0 0-8H6v8"/><path d="M15 20a4 4 0 0 0 0-8H6v8Z"/></svg>,
                 Italic: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="19" x2="10" y1="4" y2="4"/><line x1="14" x2="5" y1="20" y2="20"/><line x1="15" x2="9" y1="4" y2="20"/></svg>,
                 Alert: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>,
-                Check: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"/></svg>
+                Check: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12"/></svg>,
+                Image: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
             };
             return icons[name] || null;
         };
@@ -215,7 +216,9 @@
                 title: createTextObj("MASTER STROKE", { color: '#ffffff', fontFamily: 'Cinzel', fontSize: '5rem', fontWeight: '900', textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }),
                 subtitle: createTextObj("Unleashing Creativity, One Stroke at a Time", { color: '#f3f4f6', fontFamily: 'Great Vibes', fontSize: '2rem' }),
                 bgUrl: "https://cdn.pixabay.com/video/2016/09/21/5302-183786270_large.mp4",
-                bgType: "video"
+                bgType: "video",
+                logoUrl: "", 
+                logoSize: 150 
             },
             home: {
                 bgUrl: "https://images.unsplash.com/photo-1513364776144-60967b0f800f?q=80&w=2071&auto=format&fit=crop",
@@ -449,6 +452,53 @@
             );
         };
 
+        // --- LOGO CONTROL COMPONENT ---
+        const LogoControl = ({ data, onUpdate, onNotify }) => {
+            const [isUploading, setIsUploading] = useState(false);
+            const handleFileUpload = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                setIsUploading(true);
+                try {
+                    const filename = `logo_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
+                    const storageRef = storage.ref().child(`artifacts/${APP_ID}/public/media/${filename}`);
+                    const snapshot = await storageRef.put(file);
+                    const downloadURL = await snapshot.ref.getDownloadURL();
+                    onUpdate({ ...data, logoUrl: downloadURL });
+                    onNotify("Logo uploaded!", 'success');
+                } catch (err) {
+                    console.error(err);
+                    onNotify("Upload failed.", 'error');
+                } finally {
+                    setIsUploading(false);
+                }
+            };
+
+            return (
+                <div className="absolute top-20 right-4 z-50 bg-black/80 p-4 rounded text-white text-sm w-64 shadow-xl border border-purple-500">
+                    <h4 className="font-bold mb-2 text-purple-300">Editing: LOGO</h4>
+                    <div className="mb-2">
+                        <label className="block text-xs text-green-400 font-bold">Upload Logo</label>
+                        {isUploading ? <span className="text-xs">Uploading...</span> : <input type="file" onChange={handleFileUpload} className="text-xs"/>}
+                    </div>
+                    <div className="mb-2">
+                        <label className="block text-xs text-blue-400 font-bold">Or URL</label>
+                        <input type="text" value={data.logoUrl || ''} onChange={(e) => onUpdate({...data, logoUrl: e.target.value})} className="w-full text-black text-xs p-1 rounded"/>
+                    </div>
+                    <div>
+                        <label className="block text-xs text-yellow-400 font-bold">Size: {data.logoSize}px</label>
+                        <input 
+                            type="range" 
+                            min="50" max="300" 
+                            value={data.logoSize || 150} 
+                            onChange={(e) => onUpdate({...data, logoSize: e.target.value})}
+                            className="w-full"
+                        />
+                    </div>
+                </div>
+            );
+        };
+
         const BackgroundControl = ({ data, onUpdate, label, onNotify }) => {
             const [isUploading, setIsUploading] = useState(false);
             const handleFileUpload = async (e) => {
@@ -489,7 +539,7 @@
             };
 
             return (
-                <div className="absolute top-4 right-4 z-50 bg-black/80 p-4 rounded text-white text-sm w-64 shadow-xl border border-purple-500">
+                <div className="absolute top-4 left-4 z-50 bg-black/80 p-4 rounded text-white text-sm w-64 shadow-xl border border-purple-500">
                     <h4 className="font-bold mb-2 text-purple-300">Editing: {label.toUpperCase()}</h4>
                     
                     {/* NEW: Type Selector */}
@@ -811,7 +861,24 @@
                     <header className="relative min-h-[60vh] h-auto py-20 flex items-center justify-center overflow-hidden bg-gray-900">
                         <div className="absolute inset-0 bg-black/50 z-10" />
                         <BackgroundLayer url={data.header.bgUrl} type={data.header.bgType} />
+                        
+                        {/* Logo Rendering */}
+                        {data.header.logoUrl ? (
+                            <img 
+                                src={data.header.logoUrl} 
+                                alt="School Logo" 
+                                className="absolute top-4 right-4 z-30 object-contain drop-shadow-lg"
+                                style={{ width: `${data.header.logoSize}px`, height: 'auto' }}
+                            />
+                        ) : isAdmin && (
+                            <div className="absolute top-4 right-4 z-30 border-2 border-dashed border-white/50 rounded-lg flex items-center justify-center text-white/50 text-xs font-bold" style={{ width: `${data.header.logoSize}px`, height: `${data.header.logoSize}px` }}>
+                                LOGO HERE
+                            </div>
+                        )}
+
                         {isAdmin && <BackgroundControl data={data.header} onUpdate={(u) => updateSection('header', u)} label="Main Header" onNotify={showNotify} />}
+                        {isAdmin && <LogoControl data={data.header} onUpdate={(u) => updateSection('header', u)} onNotify={showNotify} />}
+
                         <div className="relative z-20 text-center text-white px-4">
                             <h2 className="mb-2"><EditableText admin={isAdmin} data={data.header.schoolName} onChange={v => updateSection('header', {schoolName:v})} className="bg-transparent" /></h2>
                             <h1 className="mb-4"><EditableText admin={isAdmin} data={data.header.title} onChange={v => updateSection('header', {title:v})} className="bg-transparent" /></h1>
