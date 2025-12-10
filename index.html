@@ -9,13 +9,20 @@
     <script>
         window.onerror = function(msg, url, line, col, error) {
             console.error("Global Error:", msg);
+            // Ignore permission warning (app handles it)
             if (msg.includes('permission-denied')) return true;
+            
+            // Show crash details on screen
             const loader = document.getElementById('initial-loader');
-            if (loader) loader.innerHTML = `<div style="color:#ef4444; text-align:center; padding:20px;">
-                <p style="font-size:1.2em; font-weight:bold;">Something went wrong</p>
-                <p style="font-size:0.8em; opacity:0.8;">${msg}</p>
-                <p style="font-size:0.7em;">Check console for details.</p>
-            </div>`;
+            if (loader) {
+                loader.innerHTML = `
+                    <div style="color:#ff6b6b; text-align:center; font-family:sans-serif; padding:20px;">
+                        <h3>Startup Error</h3>
+                        <p>${msg}</p>
+                        <small>Check console for details.</small>
+                    </div>
+                `;
+            }
             return false;
         };
     </script>
@@ -35,9 +42,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
-
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
 
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Great+Vibes&family=Dancing+Script:wght@400;700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
@@ -363,7 +367,7 @@
             const sizes = ['0.8rem', '1rem', '1.25rem', '1.5rem', '2rem', '3rem', '4rem', '5rem', '6rem', '8rem'];
 
             return (
-                <div className="format-toolbar">
+                <div className="format-toolbar" onMouseDown={e => e.preventDefault()}>
                     {/* Font Family */}
                     <select 
                         value={style.fontFamily || 'inherit'} 
@@ -452,122 +456,128 @@
             );
         };
 
-        // --- LOGO CONTROL COMPONENT ---
-        const LogoControl = ({ data, onUpdate, onNotify }) => {
+        // --- ADMIN TOOLBAR COMPONENT (Consolidated) ---
+        const AdminToolbar = ({ data, activeTab, navItems, onUpdate, onNotify }) => {
             const [isUploading, setIsUploading] = useState(false);
-            const handleFileUpload = async (e) => {
+
+            // Generic Upload Handler
+            const handleFileUpload = async (e, type) => {
                 const file = e.target.files[0];
                 if (!file) return;
                 setIsUploading(true);
+                
+                // Fallback timeout for upload hang
+                const timeoutId = setTimeout(() => {
+                    if (isUploading) {
+                        setIsUploading(false);
+                        onNotify("Upload taking too long. Please use a direct URL instead.", 'error');
+                    }
+                }, 10000); // 10 seconds timeout
+
                 try {
-                    const filename = `logo_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
+                    const filename = `${type}_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
                     const storageRef = storage.ref().child(`artifacts/${APP_ID}/public/media/${filename}`);
                     const snapshot = await storageRef.put(file);
                     const downloadURL = await snapshot.ref.getDownloadURL();
-                    onUpdate({ ...data, logoUrl: downloadURL });
-                    onNotify("Logo uploaded!", 'success');
-                } catch (err) {
-                    console.error(err);
-                    onNotify("Upload failed.", 'error');
-                } finally {
-                    setIsUploading(false);
-                }
-            };
-
-            return (
-                <div className="absolute top-20 right-4 z-50 bg-black/80 p-4 rounded text-white text-sm w-64 shadow-xl border border-purple-500">
-                    <h4 className="font-bold mb-2 text-purple-300">Editing: LOGO</h4>
-                    <div className="mb-2">
-                        <label className="block text-xs text-green-400 font-bold">Upload Logo</label>
-                        {isUploading ? <span className="text-xs">Uploading...</span> : <input type="file" onChange={handleFileUpload} className="text-xs"/>}
-                    </div>
-                    <div className="mb-2">
-                        <label className="block text-xs text-blue-400 font-bold">Or URL</label>
-                        <input type="text" value={data.logoUrl || ''} onChange={(e) => onUpdate({...data, logoUrl: e.target.value})} className="w-full text-black text-xs p-1 rounded"/>
-                    </div>
-                    <div>
-                        <label className="block text-xs text-yellow-400 font-bold">Size: {data.logoSize}px</label>
-                        <input 
-                            type="range" 
-                            min="50" max="300" 
-                            value={data.logoSize || 150} 
-                            onChange={(e) => onUpdate({...data, logoSize: e.target.value})}
-                            className="w-full"
-                        />
-                    </div>
-                </div>
-            );
-        };
-
-        const BackgroundControl = ({ data, onUpdate, label, onNotify }) => {
-            const [isUploading, setIsUploading] = useState(false);
-            const handleFileUpload = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                setIsUploading(true);
-                try {
-                    const filename = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
-                    const storageRef = storage.ref().child(`artifacts/${APP_ID}/public/media/${filename}`);
-                    const snapshot = await storageRef.put(file);
-                    const downloadURL = await snapshot.ref.getDownloadURL();
-                    onUpdate({ 
-                        ...data, 
-                        bgUrl: downloadURL, 
-                        bgType: file.type.startsWith('video/') ? 'video' : 'image' 
-                    });
-                    onNotify("File uploaded successfully!", 'success');
-                } catch (err) {
-                    console.error(err);
-                    onNotify("Upload failed. Check console.", 'error');
-                } finally {
-                    setIsUploading(false);
-                }
-            };
-
-            const handleUrlChange = (val) => {
-                // Auto-detect video
-                const isVideo = val.endsWith('.mp4') || val.endsWith('.webm') || val.endsWith('.ogg');
-                onUpdate({
-                    ...data, 
-                    bgUrl: val,
-                    bgType: isVideo ? 'video' : 'image' // Auto-switch logic
-                });
-            };
-
-            const handleTypeChange = (type) => {
-                onUpdate({...data, bgType: type});
-            };
-
-            return (
-                <div className="absolute top-4 left-4 z-50 bg-black/80 p-4 rounded text-white text-sm w-64 shadow-xl border border-purple-500">
-                    <h4 className="font-bold mb-2 text-purple-300">Editing: {label.toUpperCase()}</h4>
                     
-                    {/* NEW: Type Selector */}
-                    <div className="mb-3">
-                        <label className="block text-xs text-gray-400 font-bold mb-1">Background Type:</label>
-                        <select 
-                            value={data.bgType} 
-                            onChange={(e) => handleTypeChange(e.target.value)}
-                            className="w-full text-black text-xs p-1 rounded"
-                        >
-                            <option value="image">Image</option>
-                            <option value="video">Video</option>
-                        </select>
+                    clearTimeout(timeoutId);
+
+                    if (type === 'logo') {
+                        onUpdate(activeTab, { ...data[activeTab], logoUrl: downloadURL }); // Pass full object update if needed, but here we update header part
+                        // Actually, logo is global in header, so need to pass correct update function.
+                        // Simplified: AdminToolbar will emit specific updates
+                        onUpdate('header', { ...data.header, logoUrl: downloadURL });
+                    } else {
+                        const isVideo = file.type.startsWith('video/');
+                        onUpdate(activeTab, { 
+                            ...data[activeTab], 
+                            bgUrl: downloadURL, 
+                            bgType: isVideo ? 'video' : 'image' 
+                        });
+                    }
+                    onNotify("Upload successful!", 'success');
+                } catch (err) {
+                    clearTimeout(timeoutId);
+                    console.error(err);
+                    onNotify("Upload failed. Use URL option.", 'error');
+                } finally {
+                    setIsUploading(false);
+                }
+            };
+
+            const currentTabLabel = navItems.find(n => n.id === activeTab)?.label || activeTab;
+
+            return (
+                <div className="absolute top-24 left-4 z-50 bg-gray-900/95 backdrop-blur border border-gray-700 p-4 rounded-xl shadow-2xl text-white w-72 flex flex-col gap-4 max-h-[80vh] overflow-y-auto">
+                    <div className="flex items-center gap-2 border-b border-gray-700 pb-2">
+                        <Icon name="Lock" className="w-4 h-4 text-green-400"/>
+                        <span className="font-bold text-sm tracking-wider">ADMIN CONTROLS</span>
                     </div>
 
-                    <div className="mb-2">
-                        <label className="block text-xs text-green-400 font-bold">Upload (Cloud)</label>
-                        {isUploading ? <span className="text-xs">Uploading...</span> : <input type="file" onChange={handleFileUpload} className="text-xs"/>}
-                    </div>
-                    <div>
-                        <label className="block text-xs text-blue-400 font-bold">Or URL</label>
+                    {/* SECTION: LOGO (Only on Header) */}
+                    <div className="space-y-2">
+                        <h5 className="text-xs font-bold text-blue-400 uppercase">School Logo</h5>
+                        <div className="flex gap-2">
+                            <label className="flex-1 cursor-pointer bg-gray-800 hover:bg-gray-700 text-xs py-2 px-3 rounded flex items-center justify-center gap-1 border border-gray-600 transition-colors">
+                                <Icon name="Plus" className="w-3 h-3"/> Upload
+                                <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'logo')} />
+                            </label>
+                        </div>
                         <input 
                             type="text" 
-                            value={data.bgUrl || ''} 
-                            onChange={(e) => handleUrlChange(e.target.value)} 
-                            placeholder="https://... (.mp4 for videos)"
-                            className="w-full text-black text-xs p-1 rounded"
+                            placeholder="Or paste Logo URL" 
+                            className="w-full bg-gray-800 text-xs p-2 rounded border border-gray-700 focus:border-blue-500 outline-none"
+                            value={data.header.logoUrl || ''}
+                            onChange={(e) => onUpdate('header', { ...data.header, logoUrl: e.target.value })}
                         />
+                         <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-gray-400">Size:</span>
+                            <input 
+                                type="range" min="50" max="300" 
+                                value={data.header.logoSize || 150} 
+                                onChange={(e) => onUpdate('header', { ...data.header, logoSize: e.target.value })}
+                                className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                            />
+                        </div>
+                    </div>
+
+                    {/* SECTION: BACKGROUND (Dynamic) */}
+                    <div className="space-y-2 border-t border-gray-700 pt-4">
+                         <h5 className="text-xs font-bold text-purple-400 uppercase">Background: {currentTabLabel}</h5>
+                         <select 
+                            className="w-full bg-gray-800 text-xs p-2 rounded border border-gray-700 outline-none"
+                            value={data[activeTab].bgType}
+                            onChange={(e) => onUpdate(activeTab, { ...data[activeTab], bgType: e.target.value })}
+                        >
+                            <option value="image">Image Mode</option>
+                            <option value="video">Video Mode</option>
+                        </select>
+
+                         <div className="flex gap-2">
+                            <label className="flex-1 cursor-pointer bg-gray-800 hover:bg-gray-700 text-xs py-2 px-3 rounded flex items-center justify-center gap-1 border border-gray-600 transition-colors">
+                                <Icon name="Image" className="w-3 h-3"/> Upload BG
+                                <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'bg')} />
+                            </label>
+                        </div>
+
+                        <input 
+                            type="text" 
+                            placeholder="Or paste Background URL" 
+                            className="w-full bg-gray-800 text-xs p-2 rounded border border-gray-700 focus:border-purple-500 outline-none"
+                            value={data[activeTab].bgUrl || ''}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                const isVideo = val.endsWith('.mp4');
+                                onUpdate(activeTab, { 
+                                    ...data[activeTab], 
+                                    bgUrl: val,
+                                    bgType: isVideo ? 'video' : data[activeTab].bgType 
+                                });
+                            }}
+                        />
+                        <p className="text-[9px] text-gray-500">
+                            {isUploading ? <span className="text-yellow-400 animate-pulse">Uploading to Cloud...</span> : "Supports .jpg, .png, .mp4"}
+                        </p>
                     </div>
                 </div>
             );
@@ -597,14 +607,11 @@
         };
 
         // --- WRAPPER COMPONENT (Defined Outside App) ---
-        // This fixes the focus-loss issue by ensuring the wrapper is a stable component
-        const ContentWrapper = ({ children, current, isAdmin, updateSection, label, onNotify }) => {
-            const controls = isAdmin && <BackgroundControl data={current} onUpdate={(u) => updateSection(label.id, u)} label={label.label} onNotify={onNotify} />;
+        const ContentWrapper = ({ children, current, isAdmin }) => {
             return (
                 <div className="relative min-h-[600px] w-full flex flex-col justify-center font-body">
                     <BackgroundLayer url={current.bgUrl} type={current.bgType} />
                     <div className="relative z-10 w-full max-w-6xl mx-auto px-4 py-12">
-                        {controls}
                         <div className={`max-w-4xl mx-auto p-8 relative z-10 ${glassClass} text-center`}>{children}</div>
                     </div>
                 </div>
@@ -648,7 +655,24 @@
                 }
             }, []);
 
-            const updateSection = (section, updates) => setData({ ...data, [section]: { ...data[section], ...updates } });
+            const updateSection = (section, updates) => {
+                // If updates is the entire new section object (replacing), use it directly
+                // If it's a partial update, merge it.
+                // The AdminToolbar sends full objects or partials, let's standardize on merging for safety in setState
+                setData(prev => ({
+                     ...prev, 
+                     [section]: { ...prev[section], ...updates } 
+                }));
+            };
+            
+            // Helper for AdminToolbar to update header specifically (since it might be called from other tabs)
+            const handleGlobalUpdate = (section, updates) => {
+                 setData(prev => ({
+                     ...prev, 
+                     [section]: { ...prev[section], ...updates } 
+                }));
+            };
+
 
             const saveChanges = async () => {
                 if (!user) return showNotify("Login required to save.", 'error');
@@ -672,17 +696,11 @@
 
             const renderContent = () => {
                 const current = data[activeTab];
-                const activeNavItem = navItems.find(n => n.id === activeTab);
+                
+                // Pass props to ContentWrapper
+                const wrapperProps = { current, isAdmin };
 
-                const commonProps = {
-                    current,
-                    isAdmin,
-                    updateSection,
-                    label: activeNavItem,
-                    onNotify: showNotify
-                };
-
-                if (activeTab === 'home') return <ContentWrapper {...commonProps}>
+                if (activeTab === 'home') return <ContentWrapper {...wrapperProps}>
                     <div className="space-y-6 text-lg">
                         <EditableText admin={isAdmin} data={current.intro} onChange={v => updateSection('home', {intro:v})} />
                         <div className="my-4 leading-loose">
@@ -702,7 +720,7 @@
                     </div>
                 </ContentWrapper>;
 
-                if (activeTab === 'details') return <ContentWrapper {...commonProps}>
+                if (activeTab === 'details') return <ContentWrapper {...wrapperProps}>
                     <div className="space-y-6 text-lg">
                         <div className="mb-8"><EditableText admin={isAdmin} data={current.title} onChange={v => updateSection('details', {title:v})} /></div>
                         <div className="grid gap-4 text-xl">
@@ -730,7 +748,7 @@
                     </div>
                 </ContentWrapper>;
 
-                if (activeTab === 'rules') return <ContentWrapper {...commonProps}>
+                if (activeTab === 'rules') return <ContentWrapper {...wrapperProps}>
                     <div className="space-y-6 text-left text-lg px-4 md:px-12">
                         <div className="mb-8 text-center"><EditableText admin={isAdmin} data={current.title} onChange={v => updateSection('rules', {title:v})} /></div>
                         <ol className="list-none space-y-4">
@@ -750,7 +768,7 @@
                     </div>
                 </ContentWrapper>;
 
-                if (activeTab === 'general') return <ContentWrapper {...commonProps}>
+                if (activeTab === 'general') return <ContentWrapper {...wrapperProps}>
                     <div className="space-y-8 text-lg">
                         <div className="mb-8"><EditableText admin={isAdmin} data={current.title} onChange={v => updateSection('general', {title:v})} /></div>
                         {current.sections.map((s, i) => (
@@ -768,7 +786,7 @@
                     </div>
                 </ContentWrapper>;
 
-                if (activeTab === 'judgement') return <ContentWrapper {...commonProps}>
+                if (activeTab === 'judgement') return <ContentWrapper {...wrapperProps}>
                     <div className="space-y-8 text-lg">
                         <div className="mb-8"><EditableText admin={isAdmin} data={current.title} onChange={v => updateSection('judgement', {title:v})} /></div>
                         <ol className="list-none space-y-6 text-xl">
@@ -780,7 +798,7 @@
                     </div>
                 </ContentWrapper>;
 
-                if (activeTab === 'registration' || activeTab === 'contact') return <ContentWrapper {...commonProps}>
+                if (activeTab === 'registration' || activeTab === 'contact') return <ContentWrapper {...wrapperProps}>
                     {activeTab === 'registration' ? (
                         <div>
                             <div className="text-xl mb-4">Register by: <EditableText admin={isAdmin} data={current.deadline} onChange={v => updateSection('registration', {deadline:v})} /></div>
@@ -857,6 +875,17 @@
             return (
                 <div className="min-h-screen bg-gray-100 font-sans flex flex-col">
                     <PopupMessage msg={notification?.msg} type={notification?.type} onClose={() => setNotification(null)} />
+                    
+                    {/* ADMIN TOOLBAR - Fixed Position on Left */}
+                    {isAdmin && (
+                        <AdminToolbar 
+                            data={data} 
+                            activeTab={activeTab} 
+                            navItems={navItems}
+                            onUpdate={handleGlobalUpdate} 
+                            onNotify={showNotify}
+                        />
+                    )}
 
                     <header className="relative min-h-[60vh] h-auto py-20 flex items-center justify-center overflow-hidden bg-gray-900">
                         <div className="absolute inset-0 bg-black/50 z-10" />
@@ -875,9 +904,6 @@
                                 LOGO HERE
                             </div>
                         )}
-
-                        {isAdmin && <BackgroundControl data={data.header} onUpdate={(u) => updateSection('header', u)} label="Main Header" onNotify={showNotify} />}
-                        {isAdmin && <LogoControl data={data.header} onUpdate={(u) => updateSection('header', u)} onNotify={showNotify} />}
 
                         <div className="relative z-20 text-center text-white px-4">
                             <h2 className="mb-2"><EditableText admin={isAdmin} data={data.header.schoolName} onChange={v => updateSection('header', {schoolName:v})} className="bg-transparent" /></h2>
